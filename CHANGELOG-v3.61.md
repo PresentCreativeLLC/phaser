@@ -18,6 +18,8 @@
 * The `Tween.remove` method will now check to see if `Tween.parent` exists before trying to remove it from the parent. This should help guard against errors where `Tween.remove` is called by mistake on already removed or destroyed tweens. Fix #6539 (thanks @orcomarcio)
 * `Particle.alpha` is now clamped to the range 0 to 1 within the `update` method, preventing it from going out of range. Fix #6551 (thanks @orcomarcio)
 * `Math.Wrap` has been reverted to the previous version. Fix #6479 (thanks @EmilSV)
+* The `Graphics` Game Object will now set a default line and fill style to fully transparent and black. This prevents issues where a Graphics object would render with a color set in other Shape Game Objects if it had been drawn to and no style was previous set (thanks Whitesmith)
+* The WebGLRenderer will now validate that the `mipmapFilter` property in the Game Config is a valid mipmap before assigning it.
 
 # Bug Fixes
 
@@ -48,3 +50,5 @@
 My thanks to the following for helping with the Phaser 3 Examples, Beta Testing, Docs, and TypeScript definitions, either by reporting errors, fixing them, or helping author the docs:
 
 @samme
+@AlvaroEstradaDev
+@julescubtree
