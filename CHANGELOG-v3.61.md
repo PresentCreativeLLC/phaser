@@ -8,6 +8,7 @@
 * `Text.setLetterSpacing` is a new method and `Text.lineSpacing` is the related property that allows you to set the spacing between each character of a Text Game Object. The value can be either negative or positive, causing the characters to get closer or further apart. Please understand that enabling this feature will cause Phaser to render each character in this Text object one by one, rather than use a draw for the whole string. This makes it extremely expensive when used with either long strings, or lots of strings in total. You will be better off creating bitmap font text if you need to display large quantities of characters with fine control over the letter spacing (thanks @Ariorh1337)
 * `ParticleEmitter.clearDeathZones` is a new method that will clear all previously created Death Zones from a Particle Emitter (thanks @rexrainbow)
 * `ParticleEmitter.clearEmitZones` is a new method that will clear all previously created Emission Zones from a Particle Emitter (thanks @rexrainbow)
+* The `GameObject.setTexture` method has 2 new optional parameters: `updateSize` and `updateOrigin`, which are both passed to the `setFrame` method and allows you to control if the size and origin of the Game Object should be updated when the texture is set (thanks @Trissolo)
 
 # Updates
 
@@ -20,6 +21,8 @@
 * `Math.Wrap` has been reverted to the previous version. Fix #6479 (thanks @EmilSV)
 * The `Graphics` Game Object will now set a default line and fill style to fully transparent and black. This prevents issues where a Graphics object would render with a color set in other Shape Game Objects if it had been drawn to and no style was previous set (thanks Whitesmith)
 * The WebGLRenderer will now validate that the `mipmapFilter` property in the Game Config is a valid mipmap before assigning it.
+* A small amount of unused code has been removed from the `Polygon.setTo` method (thanks @Trissolo)
+* The `WebGLRenderer.deleteFramebuffer` method has been updated so it now tests for the exitennce of a COLOR and DEPTH_STENCIL attachments, and if found, removes the bindings and deletes the stencil buffer. The code that previously deelted the `RENDERERBUFFER_BINDING` has also been removed to avoid side-effects.
 
 # Bug Fixes
 
@@ -44,6 +47,13 @@
 * `Group.createFromConfig` will now check to see if the config contains either `internalCreateCallback` or `internalRemoveCallback` and set them accordingly. This fixes an issue where the callbacks would never be set if specified in an array of single configuration objects. Fix #6519 (thanks @samme)
 * `PhysicsGroup` will now set the `classType` and null the `config` when an array of single configuration objects is given in the constructor. Fix #6519 (thanks @samme)
 * The `PathFollower.pathUpdate` method will now check if the `tween` property has a valid `data` component before running the update. This prevents a call to `PathFollower.stopFollow` from throwing a `Cannot read properties of null (reading '0')` error as it tried to do a single update post stop. Fix #6508 (thanks @francois-dibulo)
+* Added missing parameter to some function calls in `Structs.ProcessQueue#add` (thanks @Trissolo)
+* `Tile` was incorrectly using the `Alpha` Game Object component, instead of the `AlphaSingle` component, which meant although the methods implied you could set a different alpha per tile corner, it was never reflected in the rendering. It has now been updated to use just the single alpha value. Fix #6594 (thanks @jcoppage)
+* The `TextureManager.addAtlasJSONArray` method would fail if a `Texture` instance was given as the second parameter, throwing a `Cannot read property 'key' of null` (thanks @1DAfT)
+* The `TextureManager.addAtlasJSONHash` method would fail if a `Texture` instance was given as the second parameter, throwing a `Cannot read property 'key' of null` (thanks @1DAfT)
+* The `TextureManager.addAtlasXML` method would fail if a `Texture` instance was given as the second parameter, throwing a `Cannot read property 'key' of null` (thanks @1DAfT)
+* The `TextureManager.addUnityAtlas` method would fail if a `Texture` instance was given as the second parameter, throwing a `Cannot read property 'key' of null` (thanks @1DAfT)
+* `DynamicTexture.preDestroy` was never called, leading to an accumlation of framebuffers in memory. This method has now been renamed to `destroy` and cleans all references correctly.
 
 ## Examples, Documentation, Beta Testing and TypeScript
 
