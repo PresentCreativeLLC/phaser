@@ -27,6 +27,10 @@
 * The `WebGLRenderer.deleteFramebuffer` method has been updated so it now tests for the exitennce of a COLOR and DEPTH_STENCIL attachments, and if found, removes the bindings and deletes the stencil buffer. The code that previously deelted the `RENDERERBUFFER_BINDING` has also been removed to avoid side-effects.
 * If you make a `Mesh` Game Object interactive, it will now bind to the scope of the Mesh and uses the current `faces` in the hit area callback, rather than the faces as defined when the Mesh was made interactive. This will help keep the input in sync with a potentially changing Mesh structure (thanks @rexrainbow)
 * iOS and any browser identifying as `AppleWebKit` will now set the `Device.es2019` flag to `true`. This causes Phaser to use the native array Stable Sort. This fixes an issue where overlapping particles could flicker on iOS. Fix #6483 (thanks @mattkelliher @spayton)
+* The `Text.dirty` Game Object property has been removed. It wasn't used internally at all, so was just adding confusion and using space.
+* The Request Video Frame polyfill will now check first to see if the browser supports `HTMLVideoElement` before trying to inspect its prototype. This should help in non-browser environments.
+* `Plane.originX` and `originY` are two new read-only properties that return the origin of the Plane, which is always 0.5 (thanks @rexrainbow)
+* The `LoaderPlugin` will now call `removeAllListeners()` as part of its `shutdown` method, which will clear any event listeners bound to a Loader instance of the Scene, during the Scene shutdown. Fix #6633 (thanks @samme)
 
 # Bug Fixes
 
@@ -61,6 +65,9 @@
 * `DynamicTexture.preDestroy` was never called, leading to an accumulation of framebuffers in memory. This method has now been renamed to `destroy` and cleans all references correctly.
 * If you gave the `width` or `height` in the Game Config object as a string it would multiply the value given by the parent size, often leading to a huge game canvas, or causing WebGL errors as it tried to create a texture larger than the GPU could handle. This has now been strengthened. If you give a string with a % at the end, it works as before, i.e. `"100%"` or `"50%"` to set the scale based on the parent. If you don't include the %, or use another unit, such as `"800px"` it will now be treated as a fixed value, not a percentage.
 * The `ParticleEmitterWebGLRenderer` has been refactored so that the `particle.frame` is used as the source of the `glTexture` used in the batch and also if a new texture unit is required. This fixes issues where a Particle Emitter would fail to use the correct frame from a multi-atlas texture. Fix #6515 (thanks @Demeno)
+* `StaticBody.setSize` will now check to see if the body has a Game Object or not, and only call `getCenter` and the frame sizes if it has. This fixes a bug where calling `physics.add.staticBody` would throw an error if you provided a width and height. Fix #6630 (thanks @Legend-Master)
+* The `DynamicTexture.fill` method will now correctly draw the fill rectangle if the `width` and `height` are provided in WebGL, where-as before it would assume the y axis started from the bottom-left instead of top-left. Fix #6615 (thanks @rexrainbow)
+* Calling the `Line.setLineWidth` method on the Line Shape Game Object would result in a line with double the thickness it should have had in WebGL. In Canvas it was the correct width. Both renderers now match. Fix #6604 (thanks @AlvaroNeuronup)
 
 ## Examples, Documentation, Beta Testing and TypeScript
 
