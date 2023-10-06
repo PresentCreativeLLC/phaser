@@ -9776,7 +9776,7 @@ var SpinePlugin = new Class({
      * Note: The ability to load this type of file will only be available if the Spine Plugin has been built or loaded into Phaser.
      *
      * @method Phaser.Loader.LoaderPlugin#spine
-     * @fires Phaser.Loader.LoaderPlugin#ADD
+     * @fires Phaser.Loader.Events#ADD
      * @since 3.19.0
      *
      * @param {(string|Phaser.Types.Loader.FileTypes.JSONFileConfig|Phaser.Types.Loader.FileTypes.JSONFileConfig[])} key - The key to use for this file, or a file configuration object, or array of them.
@@ -12603,7 +12603,7 @@ var CONST = {
      * @type {string}
      * @since 3.0.0
      */
-    VERSION: '3.60.0-beta.20',
+    VERSION: '3.61.0-beta.3',
 
     BlendModes: __webpack_require__(/*! ./renderer/BlendModes */ "../../../src/renderer/BlendModes.js"),
 
@@ -13854,6 +13854,7 @@ function init ()
     else if ((/AppleWebKit/).test(ua) && OS.iOS)
     {
         Browser.mobileSafari = true;
+        Browser.es2019 = true;
     }
     else if ((/MSIE (\d+\.\d+);/).test(ua))
     {
@@ -14610,7 +14611,7 @@ module.exports = init();
 /*!************************************!*\
   !*** ../../../src/device/Video.js ***!
   \************************************/
-/***/ ((module) => {
+/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
 /**
  * @author       Richard Davey <rich@photonstorm.com>
@@ -14618,9 +14619,13 @@ module.exports = init();
  * @license      {@link https://opensource.org/licenses/MIT|MIT License}
  */
 
+var GetFastValue = __webpack_require__(/*! ../utils/object/GetFastValue */ "../../../src/utils/object/GetFastValue.js");
+
 /**
  * Determines the video support of the browser running this Phaser Game instance.
+ *
  * These values are read-only and populated during the boot sequence of the game.
+ *
  * They are then referenced by internal game systems and are available for you to access
  * via `this.sys.game.device.video` from within any Scene.
  *
@@ -14636,6 +14641,7 @@ module.exports = init();
  * @property {boolean} ogg - Can this device play ogg video files?
  * @property {boolean} vp9 - Can this device play vp9 video files?
  * @property {boolean} webm - Can this device play webm video files?
+ * @property {function} getVideoURL - Returns the first video URL that can be played by this browser.
  */
 var Video = {
 
@@ -14645,7 +14651,8 @@ var Video = {
     m4v: false,
     ogg: false,
     vp9: false,
-    webm: false
+    webm: false,
+    hasRequestVideoFrame: false
 
 };
 
@@ -14701,6 +14708,55 @@ function init ()
     {
         //  Nothing to do
     }
+
+    if (videoElement.parentNode)
+    {
+        videoElement.parentNode.removeChild(videoElement);
+    }
+
+    Video.getVideoURL = function (urls)
+    {
+        if (!Array.isArray(urls))
+        {
+            urls = [ urls ];
+        }
+
+        for (var i = 0; i < urls.length; i++)
+        {
+            var url = GetFastValue(urls[i], 'url', urls[i]);
+
+            if (url.indexOf('blob:') === 0)
+            {
+                return {
+                    url: url,
+                    type: ''
+                };
+            }
+
+            var videoType;
+
+            if (url.indexOf('data:') === 0)
+            {
+                videoType = url.split(',')[0].match(/\/(.*?);/);
+            }
+            else
+            {
+                videoType = url.match(/\.([a-zA-Z0-9]+)($|\?)/);
+            }
+
+            videoType = GetFastValue(urls[i], 'type', (videoType) ? videoType[1] : '').toLowerCase();
+
+            if (Video[videoType])
+            {
+                return {
+                    url: url,
+                    type: videoType
+                };
+            }
+        }
+
+        return null;
+    };
 
     return Video;
 }
@@ -15885,8 +15941,8 @@ var GameObjectFactory = __webpack_require__(/*! ../../gameobjects/GameObjectFact
  *
  * For example, if a pure blue pixel with an alpha of 0.95 is masked with a pure red pixel with an
  * alpha of 0.5, the resulting pixel will be pure blue with an alpha of 0.475. Naturally, this means
- * that a pixel in the mask with an alpha of 0 will hide the corresponding pixel in all masked Game Objects
- *  A pixel with an alpha of 1 in the masked Game Object will receive the same alpha as the
+ * that a pixel in the mask with an alpha of 0 will hide the corresponding pixel in all masked Game Objects.
+ * A pixel with an alpha of 1 in the masked Game Object will receive the same alpha as the
  * corresponding pixel in the mask.
  *
  * Note: You cannot combine Bitmap Masks and Blend Modes on the same Game Object. You can, however,
@@ -16514,6 +16570,23 @@ var FX_CONST = __webpack_require__(/*! ./const */ "../../../src/fx/const.js");
 
 /**
  * @classdesc
+ * The Bloom FX Controller.
+ *
+ * This FX controller manages the bloom effect for a Game Object.
+ *
+ * Bloom is an effect used to reproduce an imaging artifact of real-world cameras.
+ * The effect produces fringes of light extending from the borders of bright areas in an image,
+ * contributing to the illusion of an extremely bright light overwhelming the
+ * camera or eye capturing the scene.
+ *
+ * A Bloom effect is added to a Game Object via the FX component:
+ *
+ * ```js
+ * const sprite = this.add.sprite();
+ *
+ * sprite.preFX.addBloom();
+ * sprite.postFX.addBloom();
+ * ```
  *
  * @class Bloom
  * @extends Phaser.FX.Controller
@@ -16522,7 +16595,7 @@ var FX_CONST = __webpack_require__(/*! ./const */ "../../../src/fx/const.js");
  * @since 3.60.0
  *
  * @param {Phaser.GameObjects.GameObject} gameObject - A reference to the Game Object that has this fx.
- * @param {number} [color] - The color of the Bloom, as a hex value.
+ * @param {number} [color=0xffffff] - The color of the Bloom, as a hex value.
  * @param {number} [offsetX=1] - The horizontal offset of the bloom effect.
  * @param {number} [offsetY=1] - The vertical offset of the bloom effect.
  * @param {number} [blurStrength=1] - The strength of the blur process of the bloom effect.
@@ -16665,6 +16738,23 @@ var FX_CONST = __webpack_require__(/*! ./const */ "../../../src/fx/const.js");
 
 /**
  * @classdesc
+ * The Blur FX Controller.
+ *
+ * This FX controller manages the blur effect for a Game Object.
+ *
+ * A Gaussian blur is the result of blurring an image by a Gaussian function. It is a widely used effect,
+ * typically to reduce image noise and reduce detail. The visual effect of this blurring technique is a
+ * smooth blur resembling that of viewing the image through a translucent screen, distinctly different
+ * from the bokeh effect produced by an out-of-focus lens or the shadow of an object under usual illumination.
+ *
+ * A Blur effect is added to a Game Object via the FX component:
+ *
+ * ```js
+ * const sprite = this.add.sprite();
+ *
+ * sprite.preFX.addBlur();
+ * sprite.postFX.addBlur();
+ * ```
  *
  * @class Blur
  * @extends Phaser.FX.Controller
@@ -16717,7 +16807,7 @@ var Blur = new Class({
          * @type {number}
          * @since 3.60.0
          */
-        this.quality = 0;
+        this.quality = quality;
 
         /**
          * The horizontal offset of the blur effect.
@@ -16830,6 +16920,27 @@ var FX_CONST = __webpack_require__(/*! ./const */ "../../../src/fx/const.js");
 
 /**
  * @classdesc
+ * The Bokeh FX Controller.
+ *
+ * This FX controller manages the bokeh effect for a Game Object.
+ *
+ * Bokeh refers to a visual effect that mimics the photographic technique of creating a shallow depth of field.
+ * This effect is used to emphasize the game's main subject or action, by blurring the background or foreground
+ * elements, resulting in a more immersive and visually appealing experience. It is achieved through rendering
+ * techniques that simulate the out-of-focus areas, giving a sense of depth and realism to the game's graphics.
+ *
+ * This effect can also be used to generate a Tilt Shift effect, which is a technique used to create a miniature
+ * effect by blurring everything except a small area of the image. This effect is achieved by blurring the
+ * top and bottom elements, while keeping the center area in focus.
+ *
+ * A Bokeh effect is added to a Game Object via the FX component:
+ *
+ * ```js
+ * const sprite = this.add.sprite();
+ *
+ * sprite.preFX.addBokeh();
+ * sprite.postFX.addBokeh();
+ * ```
  *
  * @class Bokeh
  * @extends Phaser.FX.Controller
@@ -16864,13 +16975,77 @@ var Bokeh = new Class({
 
         Controller.call(this, FX_CONST.BOKEH, gameObject);
 
+        /**
+         * The radius of the bokeh effect.
+         *
+         * This is a float value, where a radius of 0 will result in no effect being applied,
+         * and a radius of 1 will result in a strong bokeh. However, you can exceed this value
+         * for even stronger effects.
+         *
+         * @name Phaser.FX.Bokeh#radius
+         * @type {number}
+         * @since 3.60.0
+         */
         this.radius = radius;
+
+        /**
+         * The amount, or strength, of the bokeh effect. Defaults to 1.
+         *
+         * @name Phaser.FX.Bokeh#amount
+         * @type {number}
+         * @since 3.60.0
+         */
         this.amount = amount;
+
+        /**
+         * The color contrast, or brightness, of the bokeh effect. Defaults to 0.2.
+         *
+         * @name Phaser.FX.Bokeh#contrast
+         * @type {number}
+         * @since 3.60.0
+         */
         this.contrast = contrast;
 
+        /**
+         * Is this a Tilt Shift effect or a standard bokeh effect?
+         *
+         * @name Phaser.FX.Bokeh#isTiltShift
+         * @type {boolean}
+         * @since 3.60.0
+         */
         this.isTiltShift = isTiltShift;
+
+        /**
+         * If a Tilt Shift effect this controls the strength of the blur.
+         *
+         * Setting this value on a non-Tilt Shift effect will have no effect.
+         *
+         * @name Phaser.FX.Bokeh#strength
+         * @type {number}
+         * @since 3.60.0
+         */
         this.strength = strength;
+
+        /**
+         * If a Tilt Shift effect this controls the amount of horizontal blur.
+         *
+         * Setting this value on a non-Tilt Shift effect will have no effect.
+         *
+         * @name Phaser.FX.Bokeh#blurX
+         * @type {number}
+         * @since 3.60.0
+         */
         this.blurX = blurX;
+
+        /**
+         * If a Tilt Shift effect this controls the amount of vertical blur.
+         *
+         * Setting this value on a non-Tilt Shift effect will have no effect.
+         *
+         * @name Phaser.FX.Bokeh#blurY
+         * @type {number}
+         * @since 3.60.0
+         */
         this.blurY = blurY;
     }
 
@@ -16899,6 +17074,26 @@ var FX_CONST = __webpack_require__(/*! ./const */ "../../../src/fx/const.js");
 
 /**
  * @classdesc
+ * The Circle FX Controller.
+ *
+ * This FX controller manages the circle effect for a Game Object.
+ *
+ * This effect will draw a circle around the texture of the Game Object, effectively masking off
+ * any area outside of the circle without the need for an actual mask. You can control the thickness
+ * of the circle, the color of the circle and the color of the background, should the texture be
+ * transparent. You can also control the feathering applied to the circle, allowing for a harsh or soft edge.
+ *
+ * Please note that adding this effect to a Game Object will not change the input area or physics body of
+ * the Game Object, should it have one.
+ *
+ * A Circle effect is added to a Game Object via the FX component:
+ *
+ * ```js
+ * const sprite = this.add.sprite();
+ *
+ * sprite.preFX.addCircle();
+ * sprite.postFX.addCircle();
+ * ```
  *
  * @class Circle
  * @extends Phaser.FX.Controller
@@ -16908,7 +17103,7 @@ var FX_CONST = __webpack_require__(/*! ./const */ "../../../src/fx/const.js");
  *
  * @param {Phaser.GameObjects.GameObject} gameObject - A reference to the Game Object that has this fx.
  * @param {number} [thickness=8] - The width of the circle around the texture, in pixels.
- * @param {number} [color=16724914] - The color of the circular ring, given as a number value.
+ * @param {number} [color=0xfeedb6] - The color of the circular ring, given as a number value.
  * @param {number} [backgroundColor=0xff0000] - The color of the background, behind the texture, given as a number value.
  * @param {number} [scale=1] - The scale of the circle. The default scale is 1, which is a circle the full size of the underlying texture.
  * @param {number} [feather=0.005] - The amount of feathering to apply to the circle from the ring.
@@ -17044,8 +17239,28 @@ var Circle = new Class({
             color[2] = (value & 0xFF) / 255;
         }
 
-    }
+    },
 
+    /**
+     * The alpha of the background, behind the texture, given as a number value.
+     *
+     * @name Phaser.FX.Circle#backgroundAlpha
+     * @type {number}
+     * @since 3.61.0
+     */
+    backgroundAlpha: {
+
+        get: function ()
+        {
+            return this.glcolor2[3];
+        },
+
+        set: function (value)
+        {
+            this.glcolor2[3] = value;
+        }
+
+    }
 });
 
 module.exports = Circle;
@@ -17071,6 +17286,24 @@ var FX_CONST = __webpack_require__(/*! ./const */ "../../../src/fx/const.js");
 
 /**
  * @classdesc
+ * The ColorMatrix FX Controller.
+ *
+ * This FX controller manages the color matrix effect for a Game Object.
+ *
+ * The color matrix effect is a visual technique that involves manipulating the colors of an image
+ * or scene using a mathematical matrix. This process can adjust hue, saturation, brightness, and contrast,
+ * allowing developers to create various stylistic appearances or mood settings within the game.
+ * Common applications include simulating different lighting conditions, applying color filters,
+ * or achieving a specific visual style.
+ *
+ * A ColorMatrix effect is added to a Game Object via the FX component:
+ *
+ * ```js
+ * const sprite = this.add.sprite();
+ *
+ * sprite.preFX.addColorMatrix();
+ * sprite.postFX.addColorMatrix();
+ * ```
  *
  * @class ColorMatrix
  * @extends Phaser.Display.ColorMatrix
@@ -17149,6 +17382,9 @@ var Class = __webpack_require__(/*! ../utils/Class */ "../../../src/utils/Class.
 
 /**
  * @classdesc
+ * FX Controller is the base class that all built-in FX use.
+ *
+ * You should not normally create an instance of this class directly, but instead use one of the built-in FX that extend it.
  *
  * @class Controller
  * @memberof Phaser.FX
@@ -17186,11 +17422,34 @@ var Controller = new Class({
          * Toggle this boolean to enable or disable this effect,
          * without removing and adding it from the Game Object.
          *
+         * Only works for Pre FX.
+         *
+         * Post FX are always active.
+         *
          * @name Phaser.FX.Controller#active
          * @type {boolean}
          * @since 3.60.0
          */
         this.active = true;
+    },
+
+    /**
+     * Sets the active state of this FX Controller.
+     *
+     * A disabled FX Controller will not be updated.
+     *
+     * @method Phaser.FX.Controller#setActive
+     * @since 3.60.0
+     *
+     * @param {boolean} value - `true` to enable this FX Controller, or `false` to disable it.
+     *
+     * @return {this} This FX Controller instance.
+     */
+    setActive: function (value)
+    {
+        this.active = value;
+
+        return this;
     },
 
     /**
@@ -17230,6 +17489,24 @@ var FX_CONST = __webpack_require__(/*! ./const */ "../../../src/fx/const.js");
 
 /**
  * @classdesc
+ * The Displacement FX Controller.
+ *
+ * This FX controller manages the displacement effect for a Game Object.
+ *
+ * The displacement effect is a visual technique that alters the position of pixels in an image
+ * or texture based on the values of a displacement map. This effect is used to create the illusion
+ * of depth, surface irregularities, or distortion in otherwise flat elements. It can be applied to
+ * characters, objects, or backgrounds to enhance realism, convey movement, or achieve various
+ * stylistic appearances.
+ *
+ * A Displacement effect is added to a Game Object via the FX component:
+ *
+ * ```js
+ * const sprite = this.add.sprite();
+ *
+ * sprite.preFX.addDisplacement();
+ * sprite.postFX.addDisplacement();
+ * ```
  *
  * @class Displacement
  * @extends Phaser.FX.Controller
@@ -17238,9 +17515,9 @@ var FX_CONST = __webpack_require__(/*! ./const */ "../../../src/fx/const.js");
  * @since 3.60.0
  *
  * @param {Phaser.GameObjects.GameObject} gameObject - A reference to the Game Object that has this fx.
- * @param {string} [key='__WHITE'] - The unique string-based key of the texture to use for displacement, which must exist in the Texture Manager.
- * @param {number} [x=0.005] - The amount of horizontal displacement to apply.
- * @param {number} [y=0.005] - The amount of vertical displacement to apply.
+ * @param {string} [texture='__WHITE'] - The unique string-based key of the texture to use for displacement, which must exist in the Texture Manager.
+ * @param {number} [x=0.005] - The amount of horizontal displacement to apply. A very small float number, such as 0.005.
+ * @param {number} [y=0.005] - The amount of vertical displacement to apply. A very small float number, such as 0.005.
  */
 var Displacement = new Class({
 
@@ -17248,9 +17525,9 @@ var Displacement = new Class({
 
     initialize:
 
-    function Displacement (gameObject, displacementTexture, x, y)
+    function Displacement (gameObject, texture, x, y)
     {
-        if (displacementTexture === undefined) { displacementTexture = '__WHITE'; }
+        if (texture === undefined) { texture = '__WHITE'; }
         if (x === undefined) { x = 0.005; }
         if (y === undefined) { y = 0.005; }
 
@@ -17283,9 +17560,21 @@ var Displacement = new Class({
          */
         this.glTexture;
 
-        this.setTexture(displacementTexture);
+        this.setTexture(texture);
     },
 
+    /**
+     * Sets the Texture to be used for the displacement effect.
+     *
+     * You can only use a whole texture, not a frame from a texture atlas or sprite sheet.
+     *
+     * @method Phaser.GameObjects.Components.FX#setTexture
+     * @since 3.60.0
+     *
+     * @param {string} [texture='__WHITE'] - The unique string-based key of the texture to use for displacement, which must exist in the Texture Manager.
+     *
+     * @return {this} This FX Controller.
+     */
     setTexture: function (texture)
     {
         var phaserTexture = this.gameObject.scene.sys.textures.getFrame(texture);
@@ -17294,6 +17583,8 @@ var Displacement = new Class({
         {
             this.glTexture = phaserTexture.glTexture;
         }
+
+        return this;
     }
 
 });
@@ -17325,10 +17616,10 @@ var FX_CONST = __webpack_require__(/*! ./const */ "../../../src/fx/const.js");
  *
  * This FX controller manages the glow effect for a Game Object.
  *
- * A glow effect allows you to apply a soft, blurred 'glow' around either the outside,
- * inside, or both of a Game Object. The color and strength of the glow can be modified.
- *
- * You can modify most of its properties in real-time to adjust the visual effect.
+ * The glow effect is a visual technique that creates a soft, luminous halo around game objects,
+ * characters, or UI elements. This effect is used to emphasize importance, enhance visual appeal,
+ * or convey a sense of energy, magic, or otherworldly presence. The effect can also be set on
+ * the inside of the Game Object. The color and strength of the glow can be modified.
  *
  * A Glow effect is added to a Game Object via the FX component:
  *
@@ -17459,6 +17750,23 @@ var FX_CONST = __webpack_require__(/*! ./const */ "../../../src/fx/const.js");
 
 /**
  * @classdesc
+ * The Gradient FX Controller.
+ *
+ * This FX controller manages the gradient effect for a Game Object.
+ *
+ * The gradient overlay effect is a visual technique where a smooth color transition is applied over Game Objects,
+ * such as sprites or UI components. This effect is used to enhance visual appeal, emphasize depth, or create
+ * stylistic and atmospheric variations. It can also be utilized to convey information, such as representing
+ * progress or health status through color changes.
+ *
+ * A Gradient effect is added to a Game Object via the FX component:
+ *
+ * ```js
+ * const sprite = this.add.sprite();
+ *
+ * sprite.preFX.addGradient();
+ * sprite.postFX.addGradient();
+ * ```
  *
  * @class Gradient
  * @extends Phaser.FX.Controller
@@ -17470,10 +17778,10 @@ var FX_CONST = __webpack_require__(/*! ./const */ "../../../src/fx/const.js");
  * @param {number} [color1=0xff0000] - The first gradient color, given as a number value.
  * @param {number} [color2=0x00ff00] - The second gradient color, given as a number value.
  * @param {number} [alpha=0.2] - The alpha value of the gradient effect.
- * @param {number} [fromX=0] - The horizontal position the gradient will start from. This value is noralized, between 0 and 1 and is not in pixels.
- * @param {number} [fromY=0] - The vertical position the gradient will start from. This value is noralized, between 0 and 1 and is not in pixels.
- * @param {number} [toX=0] - The horizontal position the gradient will end at. This value is noralized, between 0 and 1 and is not in pixels.
- * @param {number} [toY=1] - The vertical position the gradient will end at. This value is noralized, between 0 and 1 and is not in pixels.
+ * @param {number} [fromX=0] - The horizontal position the gradient will start from. This value is normalized, between 0 and 1, and is not in pixels.
+ * @param {number} [fromY=0] - The vertical position the gradient will start from. This value is normalized, between 0 and 1, and is not in pixels.
+ * @param {number} [toX=0] - The horizontal position the gradient will end at. This value is normalized, between 0 and 1, and is not in pixels.
+ * @param {number} [toY=1] - The vertical position the gradient will end at. This value is normalized, between 0 and 1, and is not in pixels.
  * @param {number} [size=0] - How many 'chunks' the gradient is divided in to, as spread over the entire height of the texture. Leave this at zero for a smooth gradient, or set higher for a more retro chunky effect.
  */
 var Gradient = new Class({
@@ -17515,7 +17823,7 @@ var Gradient = new Class({
         this.size = size;
 
         /**
-         * The horizontal position the gradient will start from. This value is noralized, between 0 and 1 and is not in pixels.
+         * The horizontal position the gradient will start from. This value is normalized, between 0 and 1 and is not in pixels.
          *
          * @name Phaser.FX.Gradient#fromX
          * @type {number}
@@ -17524,7 +17832,7 @@ var Gradient = new Class({
         this.fromX = fromX;
 
         /**
-         * The vertical position the gradient will start from. This value is noralized, between 0 and 1 and is not in pixels.
+         * The vertical position the gradient will start from. This value is normalized, between 0 and 1 and is not in pixels.
          *
          * @name Phaser.FX.Gradient#fromY
          * @type {number}
@@ -17533,7 +17841,7 @@ var Gradient = new Class({
         this.fromY = fromY;
 
         /**
-         * The horizontal position the gradient will end. This value is noralized, between 0 and 1 and is not in pixels.
+         * The horizontal position the gradient will end. This value is normalized, between 0 and 1 and is not in pixels.
          *
          * @name Phaser.FX.Gradient#toX
          * @type {number}
@@ -17542,7 +17850,7 @@ var Gradient = new Class({
         this.toX = toX;
 
         /**
-         * The vertical position the gradient will end. This value is noralized, between 0 and 1 and is not in pixels.
+         * The vertical position the gradient will end. This value is normalized, between 0 and 1 and is not in pixels.
          *
          * @name Phaser.FX.Gradient#toY
          * @type {number}
@@ -17658,6 +17966,23 @@ var FX_CONST = __webpack_require__(/*! ./const */ "../../../src/fx/const.js");
 
 /**
  * @classdesc
+ * The Pixelate FX Controller.
+ *
+ * This FX controller manages the pixelate effect for a Game Object.
+ *
+ * The pixelate effect is a visual technique that deliberately reduces the resolution or detail of an image,
+ * creating a blocky or mosaic appearance composed of large, visible pixels. This effect can be used for stylistic
+ * purposes, as a homage to retro gaming, or as a means to obscure certain elements within the game, such as
+ * during a transition or to censor specific content.
+ *
+ * A Pixelate effect is added to a Game Object via the FX component:
+ *
+ * ```js
+ * const sprite = this.add.sprite();
+ *
+ * sprite.preFX.addPixelate();
+ * sprite.postFX.addPixelate();
+ * ```
  *
  * @class Pixelate
  * @extends Phaser.FX.Controller
@@ -17715,6 +18040,22 @@ var FX_CONST = __webpack_require__(/*! ./const */ "../../../src/fx/const.js");
 
 /**
  * @classdesc
+ * The Shadow FX Controller.
+ *
+ * This FX controller manages the shadow effect for a Game Object.
+ *
+ * The shadow effect is a visual technique used to create the illusion of depth and realism by adding darker,
+ * offset silhouettes or shapes beneath game objects, characters, or environments. These simulated shadows
+ * help to enhance the visual appeal and immersion, making the 2D game world appear more dynamic and three-dimensional.
+ *
+ * A Shadow effect is added to a Game Object via the FX component:
+ *
+ * ```js
+ * const sprite = this.add.sprite();
+ *
+ * sprite.preFX.addShadow();
+ * sprite.postFX.addShadow();
+ * ```
  *
  * @class Shadow
  * @extends Phaser.FX.Controller
@@ -17871,6 +18212,23 @@ var FX_CONST = __webpack_require__(/*! ./const */ "../../../src/fx/const.js");
 
 /**
  * @classdesc
+ * The Shine FX Controller.
+ *
+ * This FX controller manages the shift effect for a Game Object.
+ *
+ * The shine effect is a visual technique that simulates the appearance of reflective
+ * or glossy surfaces by passing a light beam across a Game Object. This effect is used to
+ * enhance visual appeal, emphasize certain features, and create a sense of depth or
+ * material properties.
+ *
+ * A Shine effect is added to a Game Object via the FX component:
+ *
+ * ```js
+ * const sprite = this.add.sprite();
+ *
+ * sprite.preFX.addShine();
+ * sprite.postFX.addShine();
+ * ```
  *
  * @class Shine
  * @extends Phaser.FX.Controller
@@ -17961,6 +18319,22 @@ var FX_CONST = __webpack_require__(/*! ./const */ "../../../src/fx/const.js");
 
 /**
  * @classdesc
+ * The Vignette FX Controller.
+ *
+ * This FX controller manages the vignette effect for a Game Object.
+ *
+ * The vignette effect is a visual technique where the edges of the screen, or a Game Object, gradually darken or blur,
+ * creating a frame-like appearance. This effect is used to draw the player's focus towards the central action or subject,
+ * enhance immersion, and provide a cinematic or artistic quality to the game's visuals.
+ *
+ * A Vignette effect is added to a Game Object via the FX component:
+ *
+ * ```js
+ * const sprite = this.add.sprite();
+ *
+ * sprite.preFX.addVignette();
+ * sprite.postFX.addVignette();
+ * ```
  *
  * @class Vignette
  * @extends Phaser.FX.Controller
@@ -18051,6 +18425,34 @@ var FX_CONST = __webpack_require__(/*! ./const */ "../../../src/fx/const.js");
 
 /**
  * @classdesc
+ * The Wipe FX Controller.
+ *
+ * This FX controller manages the wipe effect for a Game Object.
+ *
+ * The wipe or reveal effect is a visual technique that gradually uncovers or conceals elements
+ * in the game, such as images, text, or scene transitions. This effect is often used to create
+ * a sense of progression, reveal hidden content, or provide a smooth and visually appealing transition
+ * between game states.
+ *
+ * You can set both the direction and the axis of the wipe effect. The following combinations are possible:
+ *
+ * * left to right: direction 0, axis 0
+ * * right to left: direction 1, axis 0
+ * * top to bottom: direction 1, axis 1
+ * * bottom to top: direction 1, axis 0
+ *
+ * It is up to you to set the `progress` value yourself, i.e. via a Tween, in order to transition the effect.
+ *
+ * A Wipe effect is added to a Game Object via the FX component:
+ *
+ * ```js
+ * const sprite = this.add.sprite();
+ *
+ * sprite.preFX.addWipe();
+ * sprite.postFX.addWipe();
+ * sprite.preFX.addReveal();
+ * sprite.postFX.addReveal();
+ * ```
  *
  * @class Wipe
  * @extends Phaser.FX.Controller
@@ -18078,14 +18480,6 @@ var Wipe = new Class({
         if (reveal === undefined) { reveal = false; }
 
         Controller.call(this, FX_CONST.WIPE, gameObject);
-
-        //  left to right: direction 0, axis 0
-        //  right to left: direction 1, axis 0
-        //  top to bottom: direction 1, axis 1
-        //  bottom to top: direction 1, axis 0
-        //  wipe: reveal 0
-        //  reveal: reveal 1
-        //  progress: 0 - 1
 
         /**
          * The progress of the Wipe effect. This value is normalized to the range 0 to 1.
@@ -20585,6 +20979,57 @@ var SpliceOne = __webpack_require__(/*! ../../utils/array/SpliceOne */ "../../..
 
 /**
  * @classdesc
+ * The FX Component features a set of methods used for applying a range of special built-in effects to a Game Object.
+ *
+ * The effects include the following:
+ *
+ * * Barrel Distortion
+ * * Bloom
+ * * Blur
+ * * Bokeh / Tilt Shift
+ * * Circle Outline
+ * * Color Matrix
+ * * Glow
+ * * Displacement
+ * * Gradient
+ * * Pixelate
+ * * Shine
+ * * Shadow
+ * * Vignette
+ * * Wipe / Reveal
+ *
+ * All Game Objects support Post FX. These are effects applied after the Game Object has been rendered.
+ *
+ * Texture-based Game Objects also support Pre FX, including:
+ *
+ * * Image
+ * * Sprite
+ * * TileSprite
+ * * Text
+ * * RenderTexture
+ * * Video
+ *
+ * And any Game Object that extends the above.
+ *
+ * The difference between Pre FX and Post FX are that all Post FX take place in a canvas (renderer) sized frame buffer,
+ * after the Game Object has been rendered. Pre FX, however, take place in a texture sized frame buffer, which is sized
+ * based on the Game Object itself. The end result is then composited back to the main game canvas. For intensive effects,
+ * such as blur, bloom or glow, which can require many iterations, this is a much more efficient way to apply the effect,
+ * as only it only has to work on a Game Object sized texture and not all pixels in the canvas.
+ *
+ * In short, you should always try and use a Pre FX if you can.
+ *
+ * Due to the way that FX work they can be stacked-up. For example, you can apply a blur to a Game Object, then apply
+ * a bloom effect to the same Game Object. The bloom effect will be applied to the blurred texture, not the original.
+ * Keep the order in mind when stacking effects.
+ *
+ * All effects are WebGL only and do not have canvas counterparts.
+ *
+ * As you can appreciate, some effects are more expensive than others. For example, a bloom effect is going to be more
+ * expensive than a simple color matrix effect, so please consider using them wisely and performance test your target
+ * platforms early on in production.
+ *
+ * This component is created automatically by the `PostPipeline` class and does not need to be instantiated directly.
  *
  * @class FX
  * @memberof Phaser.GameObjects.Components
@@ -20594,7 +21039,6 @@ var SpliceOne = __webpack_require__(/*! ../../utils/array/SpliceOne */ "../../..
  *
  * @param {Phaser.GameObjects.GameObject} gameObject - A reference to the Game Object that owns this FX Component.
  * @param {boolean} isPost - Is this a Pre or Post FX Component?
-+- *
  */
 var FX = new Class({
 
@@ -20607,6 +21051,7 @@ var FX = new Class({
          *
          * @name Phaser.GameObjects.Components.FX#gameObject
          * @type {Phaser.GameObjects.GameObject}
+         * @readonly
          * @since 3.60.0
          */
         this.gameObject = gameObject;
@@ -20616,6 +21061,7 @@ var FX = new Class({
          *
          * @name Phaser.GameObjects.Components.FX#isPost
          * @type {boolean}
+         * @readonly
          * @since 3.60.0
          */
         this.isPost = isPost;
@@ -20623,7 +21069,8 @@ var FX = new Class({
         /**
          * Has this FX Component been enabled?
          *
-         * You should treat this property as read-only.
+         * You should treat this property as read-only, although it is toggled
+         * automaticaly during internal use.
          *
          * @name Phaser.GameObjects.Components.FX#enabled
          * @type {boolean}
@@ -20632,8 +21079,11 @@ var FX = new Class({
         this.enabled = false;
 
         /**
-         * An array containing all of the FX Controllers that
-         * have been added to this FX Component.
+         * An array containing all of the Pre FX Controllers that
+         * have been added to this FX Component. They are processed in
+         * the order they are added.
+         *
+         * This array is empty if this is a Post FX Component.
          *
          * @name Phaser.GameObjects.Components.FX#list
          * @type {Phaser.FX.Controller[]}
@@ -20643,12 +21093,14 @@ var FX = new Class({
 
         /**
          * The amount of extra padding to be applied to this Game Object
-         * when it is being rendered by a PreFX or SpriteFX Pipeline.
+         * when it is being rendered by a PreFX Pipeline.
          *
          * Lots of FX require additional spacing added to the texture the
          * Game Object uses, for example a glow or shadow effect, and this
          * method allows you to control how much extra padding is included
          * in addition to the texture size.
+         *
+         * You do not need to set this if you're only using Post FX.
          *
          * @name Phaser.GameObjects.Components.FX#padding
          * @type {number}
@@ -20666,6 +21118,8 @@ var FX = new Class({
      * Game Object uses, for example a glow or shadow effect, and this
      * method allows you to control how much extra padding is included
      * in addition to the texture size.
+     *
+     * You do not need to set this if you're only using Post FX.
      *
      * @method Phaser.GameObjects.Components.FX#setPadding
      * @webglOnly
@@ -20723,6 +21177,8 @@ var FX = new Class({
      *
      * You can check the `enabled` property to see if the Game Object is already enabled, or not.
      *
+     * This only applies to Pre FX. Post FX are always enabled.
+     *
      * @method Phaser.GameObjects.Components.FX#enable
      * @since 3.60.0
      *
@@ -20730,6 +21186,11 @@ var FX = new Class({
      */
     enable: function (padding)
     {
+        if (this.isPost)
+        {
+            return;
+        }
+
         var renderer = this.gameObject.scene.sys.renderer;
 
         if (renderer && renderer.pipelines)
@@ -20753,46 +21214,97 @@ var FX = new Class({
      * Destroys and removes all FX Controllers that are part of this FX Component,
      * then disables it.
      *
+     * If this is a Pre FX Component it will only remove Pre FX.
+     * If this is a Post FX Component it will only remove Post FX.
+     *
+     * To remove both at once use the `GameObject.clearFX` method instead.
+     *
      * @method Phaser.GameObjects.Components.FX#clear
      * @since 3.60.0
+     *
+     * @return {this} This Game Object instance.
      */
     clear: function ()
     {
-        var list = this.list;
-
-        for (var i = 0; i < list.length; i++)
+        if (this.isPost)
         {
-            list[i].destroy();
+            this.gameObject.resetPostPipeline(true);
+        }
+        else
+        {
+            var list = this.list;
+
+            for (var i = 0; i < list.length; i++)
+            {
+                list[i].destroy();
+            }
+
+            this.list = [];
         }
 
-        this.list = [];
-
         this.enabled = false;
+
+        return this.gameObject;
     },
 
     /**
-     * Searches for the given FX Controler within this FX Component.
+     * Searches for the given FX Controller within this FX Component.
      *
-     * If found, the controller is removed from this compoent and then destroyed.
+     * If found, the controller is removed from this component and then destroyed.
      *
      * @method Phaser.GameObjects.Components.FX#remove
      * @since 3.60.0
      *
+     * @generic {Phaser.FX.Controller} T
+     * @genericUse {T} - [fx]
+     *
      * @param {Phaser.FX.Controller} fx - The FX Controller to remove from this FX Component.
+     *
+     * @return {this} This Game Object instance.
      */
     remove: function (fx)
     {
-        var list = this.list;
+        var i;
 
-        for (var i = 0; i < list.length; i++)
+        if (this.isPost)
         {
-            if (list[i] === fx)
-            {
-                SpliceOne(list, i);
+            var pipelines = this.gameObject.getPostPipeline(String(fx.type));
 
-                fx.destroy();
+            if (!Array.isArray(pipelines))
+            {
+                pipelines = [ pipelines ];
+            }
+
+            for (i = 0; i < pipelines.length; i++)
+            {
+                var pipeline = pipelines[i];
+
+                if (pipeline.controller === fx)
+                {
+                    this.gameObject.removePostPipeline(pipeline);
+
+                    fx.destroy();
+
+                    break;
+                }
             }
         }
+        else
+        {
+            var list = this.list;
+
+            for (i = 0; i < list.length; i++)
+            {
+                if (list[i] === fx)
+                {
+                    SpliceOne(list, i);
+
+                    fx.destroy();
+                }
+            }
+        }
+
+        return this.gameObject;
     },
 
     /**
@@ -20801,20 +21313,25 @@ var FX = new Class({
      * This will reset the pipeline on the Game Object that owns this component back to its
      * default and flag this component as disabled.
      *
-     * You can re-enable it again by calling `enable`.
+     * You can re-enable it again by calling `enable` for Pre FX or by adding an FX for Post FX.
      *
      * Optionally, set `clear` to destroy all current FX Controllers.
      *
      * @method Phaser.GameObjects.Components.FX#disable
      * @since 3.60.0
      *
-     * @param {boolean} [clear=false] - Destroy and remove all FX Controllers that are part of this FX Component.
+     * @param {boolean} [clear=false] - Destroy and remove all FX Controllers that are part of this component.
+     *
+     * @return {this} This Game Object instance.
      */
     disable: function (clear)
     {
         if (clear === undefined) { clear = false; }
 
-        this.gameObject.resetPipeline();
+        if (!this.isPost)
+        {
+            this.gameObject.resetPipeline();
+        }
 
         this.enabled = false;
 
@@ -20822,6 +21339,8 @@ var FX = new Class({
         {
             this.clear();
         }
+
+        return this.gameObject;
     },
 
     /**
@@ -20833,6 +21352,9 @@ var FX = new Class({
      *
      * @method Phaser.GameObjects.Components.FX#add
      * @since 3.60.0
+     *
+     * @generic {Phaser.FX.Controller} T
+     * @genericUse {T} - [fx]
      *
      * @param {Phaser.FX.Controller} fx - The FX Controller to add to this FX Component.
      * @param {object} [config] - Optional configuration object that is passed to the pipeline during instantiation.
@@ -20877,6 +21399,11 @@ var FX = new Class({
     /**
      * Adds a Glow effect.
      *
+     * The glow effect is a visual technique that creates a soft, luminous halo around game objects,
+     * characters, or UI elements. This effect is used to emphasize importance, enhance visual appeal,
+     * or convey a sense of energy, magic, or otherworldly presence. The effect can also be set on
+     * the inside of the Game Object. The color and strength of the glow can be modified.
+     *
      * @method Phaser.GameObjects.Components.FX#addGlow
      * @since 3.60.0
      *
@@ -20896,6 +21423,10 @@ var FX = new Class({
 
     /**
      * Adds a Shadow effect.
+     *
+     * The shadow effect is a visual technique used to create the illusion of depth and realism by adding darker,
+     * offset silhouettes or shapes beneath game objects, characters, or environments. These simulated shadows
+     * help to enhance the visual appeal and immersion, making the 2D game world appear more dynamic and three-dimensional.
      *
      * @method Phaser.GameObjects.Components.FX#addShadow
      * @since 3.60.0
@@ -20918,6 +21449,11 @@ var FX = new Class({
     /**
      * Adds a Pixelate effect.
      *
+     * The pixelate effect is a visual technique that deliberately reduces the resolution or detail of an image,
+     * creating a blocky or mosaic appearance composed of large, visible pixels. This effect can be used for stylistic
+     * purposes, as a homage to retro gaming, or as a means to obscure certain elements within the game, such as
+     * during a transition or to censor specific content.
+     *
      * @method Phaser.GameObjects.Components.FX#addPixelate
      * @since 3.60.0
      *
@@ -20932,6 +21468,10 @@ var FX = new Class({
 
     /**
      * Adds a Vignette effect.
+     *
+     * The vignette effect is a visual technique where the edges of the screen, or a Game Object, gradually darken or blur,
+     * creating a frame-like appearance. This effect is used to draw the player's focus towards the central action or subject,
+     * enhance immersion, and provide a cinematic or artistic quality to the game's visuals.
      *
      * @method Phaser.GameObjects.Components.FX#addVignette
      * @since 3.60.0
@@ -20951,6 +21491,11 @@ var FX = new Class({
     /**
      * Adds a Shine effect.
      *
+     * The shine effect is a visual technique that simulates the appearance of reflective
+     * or glossy surfaces by passing a light beam across a Game Object. This effect is used to
+     * enhance visual appeal, emphasize certain features, and create a sense of depth or
+     * material properties.
+     *
      * @method Phaser.GameObjects.Components.FX#addShine
      * @since 3.60.0
      *
@@ -20968,6 +21513,11 @@ var FX = new Class({
 
     /**
      * Adds a Blur effect.
+     *
+     * A Gaussian blur is the result of blurring an image by a Gaussian function. It is a widely used effect,
+     * typically to reduce image noise and reduce detail. The visual effect of this blurring technique is a
+     * smooth blur resembling that of viewing the image through a translucent screen, distinctly different
+     * from the bokeh effect produced by an out-of-focus lens or the shadow of an object under usual illumination.
      *
      * @method Phaser.GameObjects.Components.FX#addBlur
      * @since 3.60.0
@@ -20989,16 +21539,21 @@ var FX = new Class({
     /**
      * Adds a Gradient effect.
      *
+     * The gradient overlay effect is a visual technique where a smooth color transition is applied over Game Objects,
+     * such as sprites or UI components. This effect is used to enhance visual appeal, emphasize depth, or create
+     * stylistic and atmospheric variations. It can also be utilized to convey information, such as representing
+     * progress or health status through color changes.
+     *
      * @method Phaser.GameObjects.Components.FX#addGradient
      * @since 3.60.0
      *
      * @param {number} [color1=0xff0000] - The first gradient color, given as a number value.
      * @param {number} [color2=0x00ff00] - The second gradient color, given as a number value.
      * @param {number} [alpha=0.2] - The alpha value of the gradient effect.
-     * @param {number} [fromX=0] - The horizontal position the gradient will start from. This value is noralized, between 0 and 1 and is not in pixels.
-     * @param {number} [fromY=0] - The vertical position the gradient will start from. This value is noralized, between 0 and 1 and is not in pixels.
-     * @param {number} [toX=0] - The horizontal position the gradient will end at. This value is noralized, between 0 and 1 and is not in pixels.
-     * @param {number} [toY=1] - The vertical position the gradient will end at. This value is noralized, between 0 and 1 and is not in pixels.
+     * @param {number} [fromX=0] - The horizontal position the gradient will start from. This value is normalized, between 0 and 1, and is not in pixels.
+     * @param {number} [fromY=0] - The vertical position the gradient will start from. This value is normalized, between 0 and 1, and is not in pixels.
+     * @param {number} [toX=0] - The horizontal position the gradient will end at. This value is normalized, between 0 and 1, and is not in pixels.
+     * @param {number} [toY=1] - The vertical position the gradient will end at. This value is normalized, between 0 and 1, and is not in pixels.
      * @param {number} [size=0] - How many 'chunks' the gradient is divided in to, as spread over the entire height of the texture. Leave this at zero for a smooth gradient, or set higher for a more retro chunky effect.
      *
      * @return {Phaser.FX.Gradient} The Gradient FX Controller.
@@ -21010,6 +21565,11 @@ var FX = new Class({
 
     /**
      * Adds a Bloom effect.
+     *
+     * Bloom is an effect used to reproduce an imaging artifact of real-world cameras.
+     * The effect produces fringes of light extending from the borders of bright areas in an image,
+     * contributing to the illusion of an extremely bright light overwhelming the
+     * camera or eye capturing the scene.
      *
      * @method Phaser.GameObjects.Components.FX#addBloom
      * @since 3.60.0
@@ -21031,6 +21591,12 @@ var FX = new Class({
     /**
      * Adds a ColorMatrix effect.
      *
+     * The color matrix effect is a visual technique that involves manipulating the colors of an image
+     * or scene using a mathematical matrix. This process can adjust hue, saturation, brightness, and contrast,
+     * allowing developers to create various stylistic appearances or mood settings within the game.
+     * Common applications include simulating different lighting conditions, applying color filters,
+     * or achieving a specific visual style.
+     *
      * @method Phaser.GameObjects.Components.FX#addColorMatrix
      * @since 3.60.0
      *
@@ -21044,11 +21610,19 @@ var FX = new Class({
     /**
      * Adds a Circle effect.
      *
+     * This effect will draw a circle around the texture of the Game Object, effectively masking off
+     * any area outside of the circle without the need for an actual mask. You can control the thickness
+     * of the circle, the color of the circle and the color of the background, should the texture be
+     * transparent. You can also control the feathering applied to the circle, allowing for a harsh or soft edge.
+     *
+     * Please note that adding this effect to a Game Object will not change the input area or physics body of
+     * the Game Object, should it have one.
+     *
      * @method Phaser.GameObjects.Components.FX#addCircle
      * @since 3.60.0
      *
      * @param {number} [thickness=8] - The width of the circle around the texture, in pixels.
-     * @param {number} [color=16724914] - The color of the circular ring, given as a number value.
+     * @param {number} [color=0xfeedb6] - The color of the circular ring, given as a number value.
      * @param {number} [backgroundColor=0xff0000] - The color of the background, behind the texture, given as a number value.
      * @param {number} [scale=1] - The scale of the circle. The default scale is 1, which is a circle the full size of the underlying texture.
      * @param {number} [feather=0.005] - The amount of feathering to apply to the circle from the ring.
@@ -21062,6 +21636,9 @@ var FX = new Class({
 
     /**
      * Adds a Barrel effect.
+     *
+     * A barrel effect allows you to apply either a 'pinch' or 'expand' distortion to
+     * a Game Object. The amount of the effect can be modified in real-time.
      *
      * @method Phaser.GameObjects.Components.FX#addBarrel
      * @since 3.60.0
@@ -21078,22 +21655,42 @@ var FX = new Class({
     /**
      * Adds a Displacement effect.
      *
+     * The displacement effect is a visual technique that alters the position of pixels in an image
+     * or texture based on the values of a displacement map. This effect is used to create the illusion
+     * of depth, surface irregularities, or distortion in otherwise flat elements. It can be applied to
+     * characters, objects, or backgrounds to enhance realism, convey movement, or achieve various
+     * stylistic appearances.
+     *
      * @method Phaser.GameObjects.Components.FX#addDisplacement
      * @since 3.60.0
      *
-     * @param {string} [key='__WHITE'] - The unique string-based key of the texture to use for displacement, which must exist in the Texture Manager.
-     * @param {number} [x=0.005] - The amount of horizontal displacement to apply.
-     * @param {number} [y=0.005] - The amount of vertical displacement to apply.
+     * @param {string} [texture='__WHITE'] - The unique string-based key of the texture to use for displacement, which must exist in the Texture Manager.
+     * @param {number} [x=0.005] - The amount of horizontal displacement to apply. A very small float number, such as 0.005.
+     * @param {number} [y=0.005] - The amount of vertical displacement to apply. A very small float number, such as 0.005.
      *
      * @return {Phaser.FX.Displacement} The Displacement FX Controller.
      */
-    addDisplacement: function (displacementTexture, x, y)
+    addDisplacement: function (texture, x, y)
     {
-        return this.add(new Effects.Displacement(this.gameObject, displacementTexture, x, y));
+        return this.add(new Effects.Displacement(this.gameObject, texture, x, y));
     },
 
     /**
      * Adds a Wipe effect.
+     *
+     * The wipe or reveal effect is a visual technique that gradually uncovers or conceals elements
+     * in the game, such as images, text, or scene transitions. This effect is often used to create
+     * a sense of progression, reveal hidden content, or provide a smooth and visually appealing transition
+     * between game states.
+     *
+     * You can set both the direction and the axis of the wipe effect. The following combinations are possible:
+     *
+     * * left to right: direction 0, axis 0
+     * * right to left: direction 1, axis 0
+     * * top to bottom: direction 1, axis 1
+     * * bottom to top: direction 1, axis 0
+     *
+     * It is up to you to set the `progress` value yourself, i.e. via a Tween, in order to transition the effect.
      *
      * @method Phaser.GameObjects.Components.FX#addWipe
      * @since 3.60.0
@@ -21112,6 +21709,20 @@ var FX = new Class({
     /**
      * Adds a Reveal Wipe effect.
      *
+     * The wipe or reveal effect is a visual technique that gradually uncovers or conceals elements
+     * in the game, such as images, text, or scene transitions. This effect is often used to create
+     * a sense of progression, reveal hidden content, or provide a smooth and visually appealing transition
+     * between game states.
+     *
+     * You can set both the direction and the axis of the wipe effect. The following combinations are possible:
+     *
+     * * left to right: direction 0, axis 0
+     * * right to left: direction 1, axis 0
+     * * top to bottom: direction 1, axis 1
+     * * bottom to top: direction 1, axis 0
+     *
+     * It is up to you to set the `progress` value yourself, i.e. via a Tween, in order to transition the effect.
+     *
      * @method Phaser.GameObjects.Components.FX#addReveal
      * @since 3.60.0
      *
@@ -21129,6 +21740,13 @@ var FX = new Class({
     /**
      * Adds a Bokeh effect.
      *
+     * Bokeh refers to a visual effect that mimics the photographic technique of creating a shallow depth of field.
+     * This effect is used to emphasize the game's main subject or action, by blurring the background or foreground
+     * elements, resulting in a more immersive and visually appealing experience. It is achieved through rendering
+     * techniques that simulate the out-of-focus areas, giving a sense of depth and realism to the game's graphics.
+     *
+     * See also Tilt Shift.
+     *
      * @method Phaser.GameObjects.Components.FX#addBokeh
      * @since 3.60.0
      *
@@ -21144,7 +21762,13 @@ var FX = new Class({
     },
 
     /**
-     * Adds a TiltShift effect.
+     * Adds a Tilt Shift effect.
+     *
+     * This Bokeh effect can also be used to generate a Tilt Shift effect, which is a technique used to create a miniature
+     * effect by blurring everything except a small area of the image. This effect is achieved by blurring the
+     * top and bottom elements, while keeping the center area in focus.
+     *
+     * See also Bokeh.
      *
      * @method Phaser.GameObjects.Components.FX#addTiltShift
      * @since 3.60.0
@@ -21152,9 +21776,9 @@ var FX = new Class({
      * @param {number} [radius=0.5] - The radius of the bokeh effect.
      * @param {number} [amount=1] - The amount of the bokeh effect.
      * @param {number} [contrast=0.2] - The color contrast of the bokeh effect.
-     * @param {number} [blurX=1] - If Tilt Shift, the amount of horizontal blur.
-     * @param {number} [blurY=1] - If Tilt Shift, the amount of vertical blur.
-     * @param {number} [strength=1] - If Tilt Shift, the strength of the blur.
+     * @param {number} [blurX=1] - The amount of horizontal blur.
+     * @param {number} [blurY=1] - The amount of vertical blur.
+     * @param {number} [strength=1] - The strength of the blur.
      *
      * @return {Phaser.FX.Bokeh} The Bokeh TiltShift FX Controller.
      */
@@ -21386,12 +22010,12 @@ var GetBounds = {
      * @private
      * @since 3.18.0
      *
-     * @generic {Phaser.Math.Vector2} O - [output,$return]
+     * @generic {Phaser.Types.Math.Vector2Like} O - [output,$return]
      *
-     * @param {(Phaser.Math.Vector2|object)} output - An object to store the values in. If not provided a new Vector2 will be created.
+     * @param {Phaser.Types.Math.Vector2Like} output - An object to store the values in. If not provided a new Vector2 will be created.
      * @param {boolean} [includeParent=false] - If this Game Object has a parent Container, include it (and all other ancestors) in the resulting vector?
      *
-     * @return {(Phaser.Math.Vector2|object)} The values stored in the output object.
+     * @return {Phaser.Types.Math.Vector2Like} The values stored in the output object.
      */
     prepareBoundsOutput: function (output, includeParent)
     {
@@ -21414,40 +22038,45 @@ var GetBounds = {
 
     /**
      * Gets the center coordinate of this Game Object, regardless of origin.
-     * The returned point is calculated in local space and does not factor in any parent containers
+     *
+     * The returned point is calculated in local space and does not factor in any parent Containers,
+     * unless the `includeParent` argument is set to `true`.
      *
      * @method Phaser.GameObjects.Components.GetBounds#getCenter
      * @since 3.0.0
      *
-     * @generic {Phaser.Math.Vector2} O - [output,$return]
+     * @generic {Phaser.Types.Math.Vector2Like} O - [output,$return]
      *
-     * @param {(Phaser.Math.Vector2|object)} [output] - An object to store the values in. If not provided a new Vector2 will be created.
+     * @param {Phaser.Types.Math.Vector2Like} [output] - An object to store the values in. If not provided a new Vector2 will be created.
+     * @param {boolean} [includeParent=false] - If this Game Object has a parent Container, include it (and all other ancestors) in the resulting vector?
      *
-     * @return {(Phaser.Math.Vector2|object)} The values stored in the output object.
+     * @return {Phaser.Types.Math.Vector2Like} The values stored in the output object.
      */
-    getCenter: function (output)
+    getCenter: function (output, includeParent)
     {
         if (output === undefined) { output = new Vector2(); }
 
         output.x = this.x - (this.displayWidth * this.originX) + (this.displayWidth / 2);
         output.y = this.y - (this.displayHeight * this.originY) + (this.displayHeight / 2);
 
-        return output;
+        return this.prepareBoundsOutput(output, includeParent);
     },
 
     /**
      * Gets the top-left corner coordinate of this Game Object, regardless of origin.
-     * The returned point is calculated in local space and does not factor in any parent containers
+     *
+     * The returned point is calculated in local space and does not factor in any parent Containers,
+     * unless the `includeParent` argument is set to `true`.
      *
      * @method Phaser.GameObjects.Components.GetBounds#getTopLeft
      * @since 3.0.0
      *
-     * @generic {Phaser.Math.Vector2} O - [output,$return]
+     * @generic {Phaser.Types.Math.Vector2Like} O - [output,$return]
      *
-     * @param {(Phaser.Math.Vector2|object)} [output] - An object to store the values in. If not provided a new Vector2 will be created.
+     * @param {Phaser.Types.Math.Vector2Like} [output] - An object to store the values in. If not provided a new Vector2 will be created.
      * @param {boolean} [includeParent=false] - If this Game Object has a parent Container, include it (and all other ancestors) in the resulting vector?
      *
-     * @return {(Phaser.Math.Vector2|object)} The values stored in the output object.
+     * @return {Phaser.Types.Math.Vector2Like} The values stored in the output object.
      */
     getTopLeft: function (output, includeParent)
     {
@@ -21461,17 +22090,19 @@ var GetBounds = {
 
     /**
      * Gets the top-center coordinate of this Game Object, regardless of origin.
-     * The returned point is calculated in local space and does not factor in any parent containers
+     *
+     * The returned point is calculated in local space and does not factor in any parent Containers,
+     * unless the `includeParent` argument is set to `true`.
      *
      * @method Phaser.GameObjects.Components.GetBounds#getTopCenter
      * @since 3.18.0
      *
-     * @generic {Phaser.Math.Vector2} O - [output,$return]
+     * @generic {Phaser.Types.Math.Vector2Like} O - [output,$return]
      *
-     * @param {(Phaser.Math.Vector2|object)} [output] - An object to store the values in. If not provided a new Vector2 will be created.
+     * @param {Phaser.Types.Math.Vector2Like} [output] - An object to store the values in. If not provided a new Vector2 will be created.
      * @param {boolean} [includeParent=false] - If this Game Object has a parent Container, include it (and all other ancestors) in the resulting vector?
      *
-     * @return {(Phaser.Math.Vector2|object)} The values stored in the output object.
+     * @return {Phaser.Types.Math.Vector2Like} The values stored in the output object.
      */
     getTopCenter: function (output, includeParent)
     {
@@ -21485,17 +22116,19 @@ var GetBounds = {
 
     /**
      * Gets the top-right corner coordinate of this Game Object, regardless of origin.
-     * The returned point is calculated in local space and does not factor in any parent containers
+     *
+     * The returned point is calculated in local space and does not factor in any parent Containers,
+     * unless the `includeParent` argument is set to `true`.
      *
      * @method Phaser.GameObjects.Components.GetBounds#getTopRight
      * @since 3.0.0
      *
-     * @generic {Phaser.Math.Vector2} O - [output,$return]
+     * @generic {Phaser.Types.Math.Vector2Like} O - [output,$return]
      *
-     * @param {(Phaser.Math.Vector2|object)} [output] - An object to store the values in. If not provided a new Vector2 will be created.
+     * @param {Phaser.Types.Math.Vector2Like} [output] - An object to store the values in. If not provided a new Vector2 will be created.
      * @param {boolean} [includeParent=false] - If this Game Object has a parent Container, include it (and all other ancestors) in the resulting vector?
      *
-     * @return {(Phaser.Math.Vector2|object)} The values stored in the output object.
+     * @return {Phaser.Types.Math.Vector2Like} The values stored in the output object.
      */
     getTopRight: function (output, includeParent)
     {
@@ -21509,17 +22142,19 @@ var GetBounds = {
 
     /**
      * Gets the left-center coordinate of this Game Object, regardless of origin.
-     * The returned point is calculated in local space and does not factor in any parent containers
+     *
+     * The returned point is calculated in local space and does not factor in any parent Containers,
+     * unless the `includeParent` argument is set to `true`.
      *
      * @method Phaser.GameObjects.Components.GetBounds#getLeftCenter
      * @since 3.18.0
      *
-     * @generic {Phaser.Math.Vector2} O - [output,$return]
+     * @generic {Phaser.Types.Math.Vector2Like} O - [output,$return]
      *
-     * @param {(Phaser.Math.Vector2|object)} [output] - An object to store the values in. If not provided a new Vector2 will be created.
+     * @param {Phaser.Types.Math.Vector2Like} [output] - An object to store the values in. If not provided a new Vector2 will be created.
      * @param {boolean} [includeParent=false] - If this Game Object has a parent Container, include it (and all other ancestors) in the resulting vector?
      *
-     * @return {(Phaser.Math.Vector2|object)} The values stored in the output object.
+     * @return {Phaser.Types.Math.Vector2Like} The values stored in the output object.
      */
     getLeftCenter: function (output, includeParent)
     {
@@ -21533,17 +22168,19 @@ var GetBounds = {
 
     /**
      * Gets the right-center coordinate of this Game Object, regardless of origin.
-     * The returned point is calculated in local space and does not factor in any parent containers
+     *
+     * The returned point is calculated in local space and does not factor in any parent Containers,
+     * unless the `includeParent` argument is set to `true`.
      *
      * @method Phaser.GameObjects.Components.GetBounds#getRightCenter
      * @since 3.18.0
      *
-     * @generic {Phaser.Math.Vector2} O - [output,$return]
+     * @generic {Phaser.Types.Math.Vector2Like} O - [output,$return]
      *
-     * @param {(Phaser.Math.Vector2|object)} [output] - An object to store the values in. If not provided a new Vector2 will be created.
+     * @param {Phaser.Types.Math.Vector2Like} [output] - An object to store the values in. If not provided a new Vector2 will be created.
      * @param {boolean} [includeParent=false] - If this Game Object has a parent Container, include it (and all other ancestors) in the resulting vector?
      *
-     * @return {(Phaser.Math.Vector2|object)} The values stored in the output object.
+     * @return {Phaser.Types.Math.Vector2Like} The values stored in the output object.
      */
     getRightCenter: function (output, includeParent)
     {
@@ -21557,17 +22194,19 @@ var GetBounds = {
 
     /**
      * Gets the bottom-left corner coordinate of this Game Object, regardless of origin.
-     * The returned point is calculated in local space and does not factor in any parent containers
+     *
+     * The returned point is calculated in local space and does not factor in any parent Containers,
+     * unless the `includeParent` argument is set to `true`.
      *
      * @method Phaser.GameObjects.Components.GetBounds#getBottomLeft
      * @since 3.0.0
      *
-     * @generic {Phaser.Math.Vector2} O - [output,$return]
+     * @generic {Phaser.Types.Math.Vector2Like} O - [output,$return]
      *
-     * @param {(Phaser.Math.Vector2|object)} [output] - An object to store the values in. If not provided a new Vector2 will be created.
+     * @param {Phaser.Types.Math.Vector2Like} [output] - An object to store the values in. If not provided a new Vector2 will be created.
      * @param {boolean} [includeParent=false] - If this Game Object has a parent Container, include it (and all other ancestors) in the resulting vector?
      *
-     * @return {(Phaser.Math.Vector2|object)} The values stored in the output object.
+     * @return {Phaser.Types.Math.Vector2Like} The values stored in the output object.
      */
     getBottomLeft: function (output, includeParent)
     {
@@ -21581,17 +22220,19 @@ var GetBounds = {
 
     /**
      * Gets the bottom-center coordinate of this Game Object, regardless of origin.
-     * The returned point is calculated in local space and does not factor in any parent containers
+     *
+     * The returned point is calculated in local space and does not factor in any parent Containers,
+     * unless the `includeParent` argument is set to `true`.
      *
      * @method Phaser.GameObjects.Components.GetBounds#getBottomCenter
      * @since 3.18.0
      *
-     * @generic {Phaser.Math.Vector2} O - [output,$return]
+     * @generic {Phaser.Types.Math.Vector2Like} O - [output,$return]
      *
-     * @param {(Phaser.Math.Vector2|object)} [output] - An object to store the values in. If not provided a new Vector2 will be created.
+     * @param {Phaser.Types.Math.Vector2Like} [output] - An object to store the values in. If not provided a new Vector2 will be created.
      * @param {boolean} [includeParent=false] - If this Game Object has a parent Container, include it (and all other ancestors) in the resulting vector?
      *
-     * @return {(Phaser.Math.Vector2|object)} The values stored in the output object.
+     * @return {Phaser.Types.Math.Vector2Like} The values stored in the output object.
      */
     getBottomCenter: function (output, includeParent)
     {
@@ -21605,17 +22246,19 @@ var GetBounds = {
 
     /**
      * Gets the bottom-right corner coordinate of this Game Object, regardless of origin.
-     * The returned point is calculated in local space and does not factor in any parent containers
+     *
+     * The returned point is calculated in local space and does not factor in any parent Containers,
+     * unless the `includeParent` argument is set to `true`.
      *
      * @method Phaser.GameObjects.Components.GetBounds#getBottomRight
      * @since 3.0.0
      *
-     * @generic {Phaser.Math.Vector2} O - [output,$return]
+     * @generic {Phaser.Types.Math.Vector2Like} O - [output,$return]
      *
-     * @param {(Phaser.Math.Vector2|object)} [output] - An object to store the values in. If not provided a new Vector2 will be created.
+     * @param {Phaser.Types.Math.Vector2Like} [output] - An object to store the values in. If not provided a new Vector2 will be created.
      * @param {boolean} [includeParent=false] - If this Game Object has a parent Container, include it (and all other ancestors) in the resulting vector?
      *
-     * @return {(Phaser.Math.Vector2|object)} The values stored in the output object.
+     * @return {Phaser.Types.Math.Vector2Like} The values stored in the output object.
      */
     getBottomRight: function (output, includeParent)
     {
@@ -21629,6 +22272,7 @@ var GetBounds = {
 
     /**
      * Gets the bounds of this Game Object, regardless of origin.
+     *
      * The values are stored and returned in a Rectangle, or Rectangle-like, object.
      *
      * @method Phaser.GameObjects.Components.GetBounds#getBounds
@@ -22459,7 +23103,7 @@ var PathFollower = {
     {
         var tween = this.pathTween;
 
-        if (tween)
+        if (tween && tween.data)
         {
             var tweenData = tween.data[0];
             var pathDelta = this.pathDelta;
@@ -22839,7 +23483,7 @@ var PostPipeline = {
      * Please see the FX Class for more details and available methods.
      *
      * @name Phaser.GameObjects.Components.PostPipeline#preFX
-     * @type {Phaser.GameObjects.Components.FX}
+     * @type {?Phaser.GameObjects.Components.FX}
      * @webglOnly
      * @since 3.60.0
      */
@@ -22860,6 +23504,8 @@ var PostPipeline = {
      * All FX are WebGL only and do not have Canvas counterparts.
      *
      * Please see the FX Class for more details and available methods.
+     *
+     * This property is always `null` until the `initPostPipeline` method is called.
      *
      * @name Phaser.GameObjects.Components.PostPipeline#postFX
      * @type {Phaser.GameObjects.Components.FX}
@@ -23069,6 +23715,8 @@ var PostPipeline = {
      */
     removePostPipeline: function (pipeline)
     {
+        var isString = (typeof pipeline === 'string');
+
         var pipelines = this.postPipelines;
 
         for (var i = pipelines.length - 1; i >= 0; i--)
@@ -23076,8 +23724,8 @@ var PostPipeline = {
             var instance = pipelines[i];
 
             if (
-                (typeof pipeline === 'string' && instance.name === pipeline) ||
-                (typeof pipeline !== 'string' && instance instanceof pipeline))
+                (isString && instance.name === pipeline) ||
+                (!isString && instance === pipeline))
             {
                 instance.destroy();
 
@@ -23086,6 +23734,34 @@ var PostPipeline = {
         }
 
         this.hasPostPipeline = (this.postPipelines.length > 0);
+
+        return this;
+    },
+
+    /**
+     * Removes all Pre and Post FX Controllers from this Game Object.
+     *
+     * If you wish to remove a single controller, use the `preFX.remove(fx)` or `postFX.remove(fx)` methods instead.
+     *
+     * If you wish to clear a single controller, use the `preFX.clear()` or `postFX.clear()` methods instead.
+     *
+     * @method Phaser.GameObjects.Components.PostPipeline#clearFX
+     * @webglOnly
+     * @since 3.60.0
+     *
+     * @return {this} This Game Object.
+     */
+    clearFX: function ()
+    {
+        if (this.preFX)
+        {
+            this.preFX.clear();
+        }
+
+        if (this.postFX)
+        {
+            this.postFX.clear();
+        }
 
         return this;
     }
@@ -23466,19 +24142,25 @@ var Texture = {
      *
      * Textures are referenced by their string-based keys, as stored in the Texture Manager.
      *
+     * Calling this method will modify the `width` and `height` properties of your Game Object.
+     *
+     * It will also change the `origin` if the Frame has a custom pivot point, as exported from packages like Texture Packer.
+     *
      * @method Phaser.GameObjects.Components.Texture#setTexture
      * @since 3.0.0
      *
      * @param {(string|Phaser.Textures.Texture)} key - The key of the texture to be used, as stored in the Texture Manager, or a Texture instance.
      * @param {(string|number)} [frame] - The name or index of the frame within the Texture.
+     * @param {boolean} [updateSize=true] - Should this call adjust the size of the Game Object?
+     * @param {boolean} [updateOrigin=true] - Should this call change the origin of the Game Object?
      *
      * @return {this} This Game Object instance.
      */
-    setTexture: function (key, frame)
+    setTexture: function (key, frame, updateSize, updateOrigin)
     {
         this.texture = this.scene.sys.textures.get(key);
 
-        return this.setFrame(frame);
+        return this.setFrame(frame, updateSize, updateOrigin);
     },
 
     /**
@@ -26359,28 +27041,19 @@ var Container = new Class({
             {
                 var entry = children[i];
 
-                if (entry.getTextBounds)
-                {
-                    var textBounds = entry.getTextBounds().global;
-                    tempRect.setTo(textBounds.x, textBounds.y, textBounds.width, textBounds.height);
-                }
-                else if (entry.getBounds)
+                if (entry.getBounds)
                 {
                     entry.getBounds(tempRect);
-                }
-                else
-                {
-                    continue;
-                }
 
-                if (!hasSetFirst)
-                {
-                    output.setTo(tempRect.x, tempRect.y, tempRect.width, tempRect.height);
-                    hasSetFirst = true;
-                }
-                else
-                {
-                    Union(tempRect, output, output);
+                    if (!hasSetFirst)
+                    {
+                        output.setTo(tempRect.x, tempRect.y, tempRect.width, tempRect.height);
+                        hasSetFirst = true;
+                    }
+                    else
+                    {
+                        Union(tempRect, output, output);
+                    }
                 }
             }
         }
@@ -27757,9 +28430,44 @@ module.exports = 'created';
  * @since 3.20.0
  *
  * @param {Phaser.GameObjects.Video} video - The Video Game Object which threw the error.
- * @param {Event} event - The native DOM event the browser raised during playback.
+ * @param {DOMException|string} event - The native DOM event the browser raised during playback.
  */
 module.exports = 'error';
+
+
+/***/ }),
+
+/***/ "../../../src/gameobjects/events/VIDEO_LOCKED_EVENT.js":
+/*!*************************************************************!*\
+  !*** ../../../src/gameobjects/events/VIDEO_LOCKED_EVENT.js ***!
+  \*************************************************************/
+/***/ ((module) => {
+
+/**
+ * @author       Richard Davey <rich@photonstorm.com>
+ * @copyright    2013-2023 Photon Storm Ltd.
+ * @license      {@link https://opensource.org/licenses/MIT|MIT License}
+ */
+
+/**
+ * The Video Game Object Locked Event.
+ *
+ * This event is dispatched when a Video was attempted to be played, but the browser prevented it
+ * from doing so due to the Media Engagement Interaction policy.
+ *
+ * If you get this event you will need to wait for the user to interact with the browser before
+ * the video will play. This is a browser security measure to prevent autoplaying videos with
+ * audio. An interaction includes a mouse click, a touch, or a key press.
+ *
+ * Listen for it from a Video Game Object instance using `Video.on('locked', listener)`.
+ *
+ * @event Phaser.GameObjects.Events#VIDEO_LOCKED
+ * @type {string}
+ * @since 3.60.0
+ *
+ * @param {Phaser.GameObjects.Video} video - The Video Game Object which raised the event.
+ */
+module.exports = 'locked';
 
 
 /***/ }),
@@ -27797,6 +28505,38 @@ module.exports = 'error';
  * @param {Phaser.GameObjects.Video} video - The Video Game Object which has looped.
  */
 module.exports = 'loop';
+
+
+/***/ }),
+
+/***/ "../../../src/gameobjects/events/VIDEO_PLAYING_EVENT.js":
+/*!**************************************************************!*\
+  !*** ../../../src/gameobjects/events/VIDEO_PLAYING_EVENT.js ***!
+  \**************************************************************/
+/***/ ((module) => {
+
+/**
+ * @author       Richard Davey <rich@photonstorm.com>
+ * @copyright    2013-2023 Photon Storm Ltd.
+ * @license      {@link https://opensource.org/licenses/MIT|MIT License}
+ */
+
+/**
+ * The Video Game Object Playing Event.
+ *
+ * The playing event is fired after playback is first started,
+ * and whenever it is restarted. For example it is fired when playback
+ * resumes after having been paused or delayed due to lack of data.
+ *
+ * Listen for it from a Video Game Object instance using `Video.on('playing', listener)`.
+ *
+ * @event Phaser.GameObjects.Events#VIDEO_PLAYING
+ * @type {string}
+ * @since 3.60.0
+ *
+ * @param {Phaser.GameObjects.Video} video - The Video Game Object which started playback.
+ */
+module.exports = 'playing';
 
 
 /***/ }),
@@ -27895,6 +28635,49 @@ module.exports = 'seeking';
 
 /***/ }),
 
+/***/ "../../../src/gameobjects/events/VIDEO_STALLED_EVENT.js":
+/*!**************************************************************!*\
+  !*** ../../../src/gameobjects/events/VIDEO_STALLED_EVENT.js ***!
+  \**************************************************************/
+/***/ ((module) => {
+
+/**
+ * @author       Richard Davey <rich@photonstorm.com>
+ * @copyright    2013-2023 Photon Storm Ltd.
+ * @license      {@link https://opensource.org/licenses/MIT|MIT License}
+ */
+
+/**
+ * The Video Game Object Stalled Event.
+ *
+ * This event is dispatched by a Video Game Object when the video playback stalls.
+ *
+ * This can happen if the video is buffering.
+ *
+ * If will fire for any of the following native DOM events:
+ *
+ * `stalled`
+ * `suspend`
+ * `waiting`
+ *
+ * Listen for it from a Video Game Object instance using `Video.on('stalled', listener)`.
+ *
+ * Note that being stalled isn't always a negative thing. A video can be stalled if it
+ * has downloaded enough data in to its buffer to not need to download any more until
+ * the current batch of frames have rendered.
+ *
+ * @event Phaser.GameObjects.Events#VIDEO_STALLED
+ * @type {string}
+ * @since 3.60.0
+ *
+ * @param {Phaser.GameObjects.Video} video - The Video Game Object which threw the error.
+ * @param {Event} event - The native DOM event the browser raised during playback.
+ */
+module.exports = 'stalled';
+
+
+/***/ }),
+
 /***/ "../../../src/gameobjects/events/VIDEO_STOP_EVENT.js":
 /*!***********************************************************!*\
   !*** ../../../src/gameobjects/events/VIDEO_STOP_EVENT.js ***!
@@ -27926,9 +28709,9 @@ module.exports = 'stop';
 
 /***/ }),
 
-/***/ "../../../src/gameobjects/events/VIDEO_TIMEOUT_EVENT.js":
+/***/ "../../../src/gameobjects/events/VIDEO_TEXTURE_EVENT.js":
 /*!**************************************************************!*\
-  !*** ../../../src/gameobjects/events/VIDEO_TIMEOUT_EVENT.js ***!
+  !*** ../../../src/gameobjects/events/VIDEO_TEXTURE_EVENT.js ***!
   \**************************************************************/
 /***/ ((module) => {
 
@@ -27939,20 +28722,25 @@ module.exports = 'stop';
  */
 
 /**
- * The Video Game Object Timeout Event.
+ * The Video Game Object Texture Ready Event.
  *
- * This event is dispatched when a Video has exhausted its allocated time while trying to connect to a video
- * source to start playback.
+ * This event is dispatched by a Video Game Object when it has finished creating its texture.
  *
- * Listen for it from a Video Game Object instance using `Video.on('timeout', listener)`.
+ * This happens when the video has finished loading enough data for its first frame.
  *
- * @event Phaser.GameObjects.Events#VIDEO_TIMEOUT
+ * If you wish to use the Video texture elsewhere in your game, such as as a Sprite texture,
+ * then you should listen for this event first, before creating the Sprites that use it.
+ *
+ * Listen for it from a Video Game Object instance using `Video.on('textureready', listener)`.
+ *
+ * @event Phaser.GameObjects.Events#VIDEO_TEXTURE
  * @type {string}
- * @since 3.20.0
+ * @since 3.60.0
  *
- * @param {Phaser.GameObjects.Video} video - The Video Game Object which timed out.
+ * @param {Phaser.GameObjects.Video} video - The Video Game Object that emitted the event.
+ * @param {Phaser.Textures.Texture} texture - The Texture that was created.
  */
-module.exports = 'timeout';
+module.exports = 'textureready';
 
 
 /***/ }),
@@ -27988,6 +28776,39 @@ module.exports = 'unlocked';
 
 /***/ }),
 
+/***/ "../../../src/gameobjects/events/VIDEO_UNSUPPORTED_EVENT.js":
+/*!******************************************************************!*\
+  !*** ../../../src/gameobjects/events/VIDEO_UNSUPPORTED_EVENT.js ***!
+  \******************************************************************/
+/***/ ((module) => {
+
+/**
+ * @author       Richard Davey <rich@photonstorm.com>
+ * @copyright    2013-2023 Photon Storm Ltd.
+ * @license      {@link https://opensource.org/licenses/MIT|MIT License}
+ */
+
+/**
+ * The Video Game Object Unsupported Event.
+ *
+ * This event is dispatched by a Video Game Object if the media source
+ * (which may be specified as a MediaStream, MediaSource, Blob, or File,
+ * for example) doesn't represent a supported media format.
+ *
+ * Listen for it from a Video Game Object instance using `Video.on('unsupported', listener)`.
+ *
+ * @event Phaser.GameObjects.Events#VIDEO_UNSUPPORTED
+ * @type {string}
+ * @since 3.60.0
+ *
+ * @param {Phaser.GameObjects.Video} video - The Video Game Object which started playback.
+ * @param {DOMException|string} event - The native DOM event the browser raised during playback.
+ */
+module.exports = 'unsupported';
+
+
+/***/ }),
+
 /***/ "../../../src/gameobjects/events/index.js":
 /*!************************************************!*\
   !*** ../../../src/gameobjects/events/index.js ***!
@@ -28012,13 +28833,17 @@ module.exports = {
     VIDEO_COMPLETE: __webpack_require__(/*! ./VIDEO_COMPLETE_EVENT */ "../../../src/gameobjects/events/VIDEO_COMPLETE_EVENT.js"),
     VIDEO_CREATED: __webpack_require__(/*! ./VIDEO_CREATED_EVENT */ "../../../src/gameobjects/events/VIDEO_CREATED_EVENT.js"),
     VIDEO_ERROR: __webpack_require__(/*! ./VIDEO_ERROR_EVENT */ "../../../src/gameobjects/events/VIDEO_ERROR_EVENT.js"),
+    VIDEO_LOCKED: __webpack_require__(/*! ./VIDEO_LOCKED_EVENT */ "../../../src/gameobjects/events/VIDEO_LOCKED_EVENT.js"),
     VIDEO_LOOP: __webpack_require__(/*! ./VIDEO_LOOP_EVENT */ "../../../src/gameobjects/events/VIDEO_LOOP_EVENT.js"),
     VIDEO_PLAY: __webpack_require__(/*! ./VIDEO_PLAY_EVENT */ "../../../src/gameobjects/events/VIDEO_PLAY_EVENT.js"),
+    VIDEO_PLAYING: __webpack_require__(/*! ./VIDEO_PLAYING_EVENT */ "../../../src/gameobjects/events/VIDEO_PLAYING_EVENT.js"),
     VIDEO_SEEKED: __webpack_require__(/*! ./VIDEO_SEEKED_EVENT */ "../../../src/gameobjects/events/VIDEO_SEEKED_EVENT.js"),
     VIDEO_SEEKING: __webpack_require__(/*! ./VIDEO_SEEKING_EVENT */ "../../../src/gameobjects/events/VIDEO_SEEKING_EVENT.js"),
+    VIDEO_STALLED: __webpack_require__(/*! ./VIDEO_STALLED_EVENT */ "../../../src/gameobjects/events/VIDEO_STALLED_EVENT.js"),
     VIDEO_STOP: __webpack_require__(/*! ./VIDEO_STOP_EVENT */ "../../../src/gameobjects/events/VIDEO_STOP_EVENT.js"),
-    VIDEO_TIMEOUT: __webpack_require__(/*! ./VIDEO_TIMEOUT_EVENT */ "../../../src/gameobjects/events/VIDEO_TIMEOUT_EVENT.js"),
-    VIDEO_UNLOCKED: __webpack_require__(/*! ./VIDEO_UNLOCKED_EVENT */ "../../../src/gameobjects/events/VIDEO_UNLOCKED_EVENT.js")
+    VIDEO_TEXTURE: __webpack_require__(/*! ./VIDEO_TEXTURE_EVENT */ "../../../src/gameobjects/events/VIDEO_TEXTURE_EVENT.js"),
+    VIDEO_UNLOCKED: __webpack_require__(/*! ./VIDEO_UNLOCKED_EVENT */ "../../../src/gameobjects/events/VIDEO_UNLOCKED_EVENT.js"),
+    VIDEO_UNSUPPORTED: __webpack_require__(/*! ./VIDEO_UNSUPPORTED_EVENT */ "../../../src/gameobjects/events/VIDEO_UNSUPPORTED_EVENT.js")
 
 };
 
@@ -31642,7 +32467,7 @@ var ImageFile = new Class({
  * It is available in the default build but can be excluded from custom builds.
  *
  * @method Phaser.Loader.LoaderPlugin#image
- * @fires Phaser.Loader.LoaderPlugin#ADD
+ * @fires Phaser.Loader.Events#ADD
  * @since 3.0.0
  *
  * @param {(string|Phaser.Types.Loader.FileTypes.ImageFileConfig|Phaser.Types.Loader.FileTypes.ImageFileConfig[])} key - The key to use for this file, or a file configuration object, or array of them.
@@ -31884,7 +32709,7 @@ var JSONFile = new Class({
  * It is available in the default build but can be excluded from custom builds.
  *
  * @method Phaser.Loader.LoaderPlugin#json
- * @fires Phaser.Loader.LoaderPlugin#ADD
+ * @fires Phaser.Loader.Events#ADD
  * @since 3.0.0
  *
  * @param {(string|Phaser.Types.Loader.FileTypes.JSONFileConfig|Phaser.Types.Loader.FileTypes.JSONFileConfig[])} key - The key to use for this file, or a file configuration object, or array of them.
@@ -32068,7 +32893,7 @@ var TextFile = new Class({
  * It is available in the default build but can be excluded from custom builds.
  *
  * @method Phaser.Loader.LoaderPlugin#text
- * @fires Phaser.Loader.LoaderPlugin#ADD
+ * @fires Phaser.Loader.Events#ADD
  * @since 3.0.0
  *
  * @param {(string|Phaser.Types.Loader.FileTypes.TextFileConfig|Phaser.Types.Loader.FileTypes.TextFileConfig[])} key - The key to use for this file, or a file configuration object, or array of them.
@@ -39830,12 +40655,6 @@ module.exports = Within;
  */
 var Wrap = function (value, min, max)
 {
-    if (value >= min && value <= max)
-    {
-        //  Skip modulo if already in range
-        return value;
-    }
-
     var range = max - min;
 
     return (min + ((((value - min) % range) + range) % range));
@@ -40437,7 +41256,7 @@ var MATH_CONST = {
     /**
      * The value of PI * 0.5.
      *
-     * Yes, we undertstand that this should actually be PI * 2, but
+     * Yes, we understand that this should actually be PI * 2, but
      * it has been like this for so long we can't change it now.
      * If you need PI * 2, use the PI2 constant instead.
      *
@@ -46493,6 +47312,7 @@ var Frame = new Class({
      */
     destroy: function ()
     {
+        this.source.glTexture = null;
         this.source = null;
         this.texture = null;
         this.glTexture = null;
@@ -49988,12 +50808,20 @@ var RotateMatrix = __webpack_require__(/*! ./RotateMatrix */ "../../../src/utils
  * @genericUse {T[][]} - [matrix,$return]
  *
  * @param {T[][]} [matrix] - The array to rotate.
+ * @param {number} [amount=1] - The number of times to rotate the matrix.
  *
  * @return {T[][]} The rotated matrix array. The source matrix should be discard for the returned matrix.
  */
-var RotateLeft = function (matrix)
+var RotateLeft = function (matrix, amount)
 {
-    return RotateMatrix(matrix, 90);
+    if (amount === undefined) { amount = 1; }
+
+    for (var i = 0; i < amount; i++)
+    {
+        matrix = RotateMatrix(matrix, 90);
+    }
+
+    return matrix;
 };
 
 module.exports = RotateLeft;
@@ -50129,12 +50957,20 @@ var RotateMatrix = __webpack_require__(/*! ./RotateMatrix */ "../../../src/utils
  * @genericUse {T[][]} - [matrix,$return]
  *
  * @param {T[][]} [matrix] - The array to rotate.
+ * @param {number} [amount=1] - The number of times to rotate the matrix.
  *
  * @return {T[][]} The rotated matrix array. The source matrix should be discard for the returned matrix.
  */
-var RotateRight = function (matrix)
+var RotateRight = function (matrix, amount)
 {
-    return RotateMatrix(matrix, -90);
+    if (amount === undefined) { amount = 1; }
+
+    for (var i = 0; i < amount; i++)
+    {
+        matrix = RotateMatrix(matrix, -90);
+    }
+
+    return matrix;
 };
 
 module.exports = RotateRight;

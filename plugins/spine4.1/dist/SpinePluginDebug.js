@@ -22845,7 +22845,7 @@ var SpinePlugin = new Class({
      * Note: The ability to load this type of file will only be available if the Spine Plugin has been built or loaded into Phaser.
      *
      * @method Phaser.Loader.LoaderPlugin#spine
-     * @fires Phaser.Loader.LoaderPlugin#ADD
+     * @fires Phaser.Loader.Events#ADD
      * @since 3.19.0
      *
      * @param {(string|Phaser.Types.Loader.FileTypes.JSONFileConfig|Phaser.Types.Loader.FileTypes.JSONFileConfig[])} key - The key to use for this file, or a file configuration object, or array of them.
@@ -26123,7 +26123,7 @@ var CONST = {
      * @type {string}
      * @since 3.0.0
      */
-    VERSION: '3.60.0',
+    VERSION: '3.61.0-beta.3',
 
     BlendModes: __webpack_require__(/*! ./renderer/BlendModes */ "../../../src/renderer/BlendModes.js"),
 
@@ -27374,6 +27374,7 @@ function init ()
     else if ((/AppleWebKit/).test(ua) && OS.iOS)
     {
         Browser.mobileSafari = true;
+        Browser.es2019 = true;
     }
     else if ((/MSIE (\d+\.\d+);/).test(ua))
     {
@@ -30326,7 +30327,7 @@ var Blur = new Class({
          * @type {number}
          * @since 3.60.0
          */
-        this.quality = 0;
+        this.quality = quality;
 
         /**
          * The horizontal offset of the blur effect.
@@ -30758,8 +30759,28 @@ var Circle = new Class({
             color[2] = (value & 0xFF) / 255;
         }
 
-    }
+    },
 
+    /**
+     * The alpha of the background, behind the texture, given as a number value.
+     *
+     * @name Phaser.FX.Circle#backgroundAlpha
+     * @type {number}
+     * @since 3.61.0
+     */
+    backgroundAlpha: {
+
+        get: function ()
+        {
+            return this.glcolor2[3];
+        },
+
+        set: function (value)
+        {
+            this.glcolor2[3] = value;
+        }
+
+    }
 });
 
 module.exports = Circle;
@@ -31277,10 +31298,10 @@ var FX_CONST = __webpack_require__(/*! ./const */ "../../../src/fx/const.js");
  * @param {number} [color1=0xff0000] - The first gradient color, given as a number value.
  * @param {number} [color2=0x00ff00] - The second gradient color, given as a number value.
  * @param {number} [alpha=0.2] - The alpha value of the gradient effect.
- * @param {number} [fromX=0] - The horizontal position the gradient will start from. This value is noralized, between 0 and 1 and is not in pixels.
- * @param {number} [fromY=0] - The vertical position the gradient will start from. This value is noralized, between 0 and 1 and is not in pixels.
- * @param {number} [toX=0] - The horizontal position the gradient will end at. This value is noralized, between 0 and 1 and is not in pixels.
- * @param {number} [toY=1] - The vertical position the gradient will end at. This value is noralized, between 0 and 1 and is not in pixels.
+ * @param {number} [fromX=0] - The horizontal position the gradient will start from. This value is normalized, between 0 and 1, and is not in pixels.
+ * @param {number} [fromY=0] - The vertical position the gradient will start from. This value is normalized, between 0 and 1, and is not in pixels.
+ * @param {number} [toX=0] - The horizontal position the gradient will end at. This value is normalized, between 0 and 1, and is not in pixels.
+ * @param {number} [toY=1] - The vertical position the gradient will end at. This value is normalized, between 0 and 1, and is not in pixels.
  * @param {number} [size=0] - How many 'chunks' the gradient is divided in to, as spread over the entire height of the texture. Leave this at zero for a smooth gradient, or set higher for a more retro chunky effect.
  */
 var Gradient = new Class({
@@ -31322,7 +31343,7 @@ var Gradient = new Class({
         this.size = size;
 
         /**
-         * The horizontal position the gradient will start from. This value is noralized, between 0 and 1 and is not in pixels.
+         * The horizontal position the gradient will start from. This value is normalized, between 0 and 1 and is not in pixels.
          *
          * @name Phaser.FX.Gradient#fromX
          * @type {number}
@@ -31331,7 +31352,7 @@ var Gradient = new Class({
         this.fromX = fromX;
 
         /**
-         * The vertical position the gradient will start from. This value is noralized, between 0 and 1 and is not in pixels.
+         * The vertical position the gradient will start from. This value is normalized, between 0 and 1 and is not in pixels.
          *
          * @name Phaser.FX.Gradient#fromY
          * @type {number}
@@ -31340,7 +31361,7 @@ var Gradient = new Class({
         this.fromY = fromY;
 
         /**
-         * The horizontal position the gradient will end. This value is noralized, between 0 and 1 and is not in pixels.
+         * The horizontal position the gradient will end. This value is normalized, between 0 and 1 and is not in pixels.
          *
          * @name Phaser.FX.Gradient#toX
          * @type {number}
@@ -31349,7 +31370,7 @@ var Gradient = new Class({
         this.toX = toX;
 
         /**
-         * The vertical position the gradient will end. This value is noralized, between 0 and 1 and is not in pixels.
+         * The vertical position the gradient will end. This value is normalized, between 0 and 1 and is not in pixels.
          *
          * @name Phaser.FX.Gradient#toY
          * @type {number}
@@ -35124,10 +35145,10 @@ var FX = new Class({
      * @param {number} [color1=0xff0000] - The first gradient color, given as a number value.
      * @param {number} [color2=0x00ff00] - The second gradient color, given as a number value.
      * @param {number} [alpha=0.2] - The alpha value of the gradient effect.
-     * @param {number} [fromX=0] - The horizontal position the gradient will start from. This value is noralized, between 0 and 1 and is not in pixels.
-     * @param {number} [fromY=0] - The vertical position the gradient will start from. This value is noralized, between 0 and 1 and is not in pixels.
-     * @param {number} [toX=0] - The horizontal position the gradient will end at. This value is noralized, between 0 and 1 and is not in pixels.
-     * @param {number} [toY=1] - The vertical position the gradient will end at. This value is noralized, between 0 and 1 and is not in pixels.
+     * @param {number} [fromX=0] - The horizontal position the gradient will start from. This value is normalized, between 0 and 1, and is not in pixels.
+     * @param {number} [fromY=0] - The vertical position the gradient will start from. This value is normalized, between 0 and 1, and is not in pixels.
+     * @param {number} [toX=0] - The horizontal position the gradient will end at. This value is normalized, between 0 and 1, and is not in pixels.
+     * @param {number} [toY=1] - The vertical position the gradient will end at. This value is normalized, between 0 and 1, and is not in pixels.
      * @param {number} [size=0] - How many 'chunks' the gradient is divided in to, as spread over the entire height of the texture. Leave this at zero for a smooth gradient, or set higher for a more retro chunky effect.
      *
      * @return {Phaser.FX.Gradient} The Gradient FX Controller.
@@ -36677,7 +36698,7 @@ var PathFollower = {
     {
         var tween = this.pathTween;
 
-        if (tween)
+        if (tween && tween.data)
         {
             var tweenData = tween.data[0];
             var pathDelta = this.pathDelta;
@@ -37716,19 +37737,25 @@ var Texture = {
      *
      * Textures are referenced by their string-based keys, as stored in the Texture Manager.
      *
+     * Calling this method will modify the `width` and `height` properties of your Game Object.
+     *
+     * It will also change the `origin` if the Frame has a custom pivot point, as exported from packages like Texture Packer.
+     *
      * @method Phaser.GameObjects.Components.Texture#setTexture
      * @since 3.0.0
      *
      * @param {(string|Phaser.Textures.Texture)} key - The key of the texture to be used, as stored in the Texture Manager, or a Texture instance.
      * @param {(string|number)} [frame] - The name or index of the frame within the Texture.
+     * @param {boolean} [updateSize=true] - Should this call adjust the size of the Game Object?
+     * @param {boolean} [updateOrigin=true] - Should this call change the origin of the Game Object?
      *
      * @return {this} This Game Object instance.
      */
-    setTexture: function (key, frame)
+    setTexture: function (key, frame, updateSize, updateOrigin)
     {
         this.texture = this.scene.sys.textures.get(key);
 
-        return this.setFrame(frame);
+        return this.setFrame(frame, updateSize, updateOrigin);
     },
 
     /**
@@ -46193,7 +46220,7 @@ var ImageFile = new Class({
  * It is available in the default build but can be excluded from custom builds.
  *
  * @method Phaser.Loader.LoaderPlugin#image
- * @fires Phaser.Loader.LoaderPlugin#ADD
+ * @fires Phaser.Loader.Events#ADD
  * @since 3.0.0
  *
  * @param {(string|Phaser.Types.Loader.FileTypes.ImageFileConfig|Phaser.Types.Loader.FileTypes.ImageFileConfig[])} key - The key to use for this file, or a file configuration object, or array of them.
@@ -46435,7 +46462,7 @@ var JSONFile = new Class({
  * It is available in the default build but can be excluded from custom builds.
  *
  * @method Phaser.Loader.LoaderPlugin#json
- * @fires Phaser.Loader.LoaderPlugin#ADD
+ * @fires Phaser.Loader.Events#ADD
  * @since 3.0.0
  *
  * @param {(string|Phaser.Types.Loader.FileTypes.JSONFileConfig|Phaser.Types.Loader.FileTypes.JSONFileConfig[])} key - The key to use for this file, or a file configuration object, or array of them.
@@ -46619,7 +46646,7 @@ var TextFile = new Class({
  * It is available in the default build but can be excluded from custom builds.
  *
  * @method Phaser.Loader.LoaderPlugin#text
- * @fires Phaser.Loader.LoaderPlugin#ADD
+ * @fires Phaser.Loader.Events#ADD
  * @since 3.0.0
  *
  * @param {(string|Phaser.Types.Loader.FileTypes.TextFileConfig|Phaser.Types.Loader.FileTypes.TextFileConfig[])} key - The key to use for this file, or a file configuration object, or array of them.
@@ -54381,12 +54408,6 @@ module.exports = Within;
  */
 var Wrap = function (value, min, max)
 {
-    if (value >= min && value <= max)
-    {
-        //  Skip modulo if already in range
-        return value;
-    }
-
     var range = max - min;
 
     return (min + ((((value - min) % range) + range) % range));
@@ -61044,6 +61065,7 @@ var Frame = new Class({
      */
     destroy: function ()
     {
+        this.source.glTexture = null;
         this.source = null;
         this.texture = null;
         this.glTexture = null;
@@ -64539,12 +64561,20 @@ var RotateMatrix = __webpack_require__(/*! ./RotateMatrix */ "../../../src/utils
  * @genericUse {T[][]} - [matrix,$return]
  *
  * @param {T[][]} [matrix] - The array to rotate.
+ * @param {number} [amount=1] - The number of times to rotate the matrix.
  *
  * @return {T[][]} The rotated matrix array. The source matrix should be discard for the returned matrix.
  */
-var RotateLeft = function (matrix)
+var RotateLeft = function (matrix, amount)
 {
-    return RotateMatrix(matrix, 90);
+    if (amount === undefined) { amount = 1; }
+
+    for (var i = 0; i < amount; i++)
+    {
+        matrix = RotateMatrix(matrix, 90);
+    }
+
+    return matrix;
 };
 
 module.exports = RotateLeft;
@@ -64680,12 +64710,20 @@ var RotateMatrix = __webpack_require__(/*! ./RotateMatrix */ "../../../src/utils
  * @genericUse {T[][]} - [matrix,$return]
  *
  * @param {T[][]} [matrix] - The array to rotate.
+ * @param {number} [amount=1] - The number of times to rotate the matrix.
  *
  * @return {T[][]} The rotated matrix array. The source matrix should be discard for the returned matrix.
  */
-var RotateRight = function (matrix)
+var RotateRight = function (matrix, amount)
 {
-    return RotateMatrix(matrix, -90);
+    if (amount === undefined) { amount = 1; }
+
+    for (var i = 0; i < amount; i++)
+    {
+        matrix = RotateMatrix(matrix, -90);
+    }
+
+    return matrix;
 };
 
 module.exports = RotateRight;
