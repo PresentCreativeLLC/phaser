@@ -1,16 +1,17 @@
 /**
  * @author       Richard Davey <rich@photonstorm.com>
- * @author       Benjamin D. Richards <benjamindrichards@gmail.com>
  * @copyright    2013-2023 Photon Storm Ltd.
  * @license      {@link https://opensource.org/licenses/MIT|MIT License}
  */
 
 var Class = require('../../utils/Class');
+var CollisionComponent = require('./components/Collision');
 var CONST = require('./const');
 var Events = require('./events');
 var RadToDeg = require('../../math/RadToDeg');
 var Rectangle = require('../../geom/rectangle/Rectangle');
 var RectangleContains = require('../../geom/rectangle/Contains');
+var SetCollisionObject = require('./SetCollisionObject');
 var Vector2 = require('../../math/Vector2');
 
 /**
@@ -24,10 +25,16 @@ var Vector2 = require('../../math/Vector2');
  * @constructor
  * @since 3.0.0
  *
+ * @extends Phaser.Physics.Arcade.Components.Collision
+ *
  * @param {Phaser.Physics.Arcade.World} world - The Arcade Physics simulation this Body belongs to.
  * @param {Phaser.GameObjects.GameObject} [gameObject] - The Game Object this Body belongs to. As of Phaser 3.60 this is now optional.
  */
 var Body = new Class({
+
+    Mixins: [
+        CollisionComponent
+    ],
 
     initialize:
 
@@ -652,6 +659,31 @@ var Body = new Class({
         this.pushable = true;
 
         /**
+         * The Slide Factor of this Body.
+         *
+         * The Slide Factor controls how much velocity is preserved when
+         * this Body is pushed by another Body.
+         *
+         * The default value is 1, which means that it will take on all
+         * velocity given in the push. You can adjust this value to control
+         * how much velocity is retained by this Body when the push ends.
+         *
+         * A value of 0, for example, will allow this Body to be pushed
+         * but then remain completely still after the push ends, such as
+         * you see in a game like Sokoban.
+         *
+         * Or you can set a mid-point, such as 0.25 which will allow it
+         * to keep 25% of the original velocity when the push ends. You
+         * can combine this with the `setDrag()` method to create deceleration.
+         *
+         * @name Phaser.Physics.Arcade.Body#slideFactor
+         * @type {Phaser.Math.Vector2}
+         * @since 3.61.0
+         * @see Phaser.GameObjects.Components.Pushable#setSlideFactor
+         */
+        this.slideFactor = new Vector2(1, 1);
+
+        /**
          * Whether the Body's position and rotation are affected by its velocity, acceleration, drag, and gravity.
          *
          * @name Phaser.Physics.Arcade.Body#moves
@@ -741,7 +773,7 @@ var Body = new Class({
          * @type {Phaser.Types.Physics.Arcade.ArcadeBodyCollision}
          * @since 3.0.0
          */
-        this.checkCollision = { none: false, up: true, down: true, left: true, right: true };
+        this.checkCollision = SetCollisionObject(false);
 
         /**
          * Whether this Body is colliding with a Body or Static Body and in which direction.
@@ -754,7 +786,7 @@ var Body = new Class({
          * @see Phaser.Physics.Arcade.Body#blocked
          * @see Phaser.Physics.Arcade.Body#embedded
          */
-        this.touching = { none: true, up: false, down: false, left: false, right: false };
+        this.touching = SetCollisionObject(true);
 
         /**
          * This Body's `touching` value during the previous step.
@@ -765,7 +797,7 @@ var Body = new Class({
          *
          * @see Phaser.Physics.Arcade.Body#touching
          */
-        this.wasTouching = { none: true, up: false, down: false, left: false, right: false };
+        this.wasTouching = SetCollisionObject(true);
 
         /**
          * Whether this Body is colliding with a Static Body, a tile, or the world boundary.
@@ -778,7 +810,7 @@ var Body = new Class({
          * @see Phaser.Physics.Arcade.Body#embedded
          * @see Phaser.Physics.Arcade.Body#touching
          */
-        this.blocked = { none: true, up: false, down: false, left: false, right: false };
+        this.blocked = SetCollisionObject(true);
 
         /**
          * Whether to automatically synchronize this Body's dimensions to the dimensions of its Game Object's visual bounds.
@@ -801,6 +833,30 @@ var Body = new Class({
          * @since 3.0.0
          */
         this.physicsType = CONST.DYNAMIC_BODY;
+
+        /**
+         * The Arcade Physics Body Collision Category.
+         *
+         * This can be set to any valid collision bitfield value.
+         *
+         * See the `setCollisionCategory` method for more details.
+         *
+         * @name Phaser.Physics.Arcade.Body#collisionCategory
+         * @type {number}
+         * @since 3.61.0
+         */
+        this.collisionCategory = 0x0001;
+
+        /**
+         * The Arcade Physics Body Collision Mask.
+         *
+         * See the `setCollidesWith` method for more details.
+         *
+         * @name Phaser.Physics.Arcade.Body#collisionMask
+         * @type {number}
+         * @since 3.61.0
+         */
+        this.collisionMask = 1;
 
         /**
          * Cached horizontal scale of the Body's Game Object.
@@ -1007,11 +1063,7 @@ var Body = new Class({
 
         if (clear)
         {
-            wasTouching.none = true;
-            wasTouching.up = false;
-            wasTouching.down = false;
-            wasTouching.left = false;
-            wasTouching.right = false;
+            SetCollisionObject(true, wasTouching);
         }
         else
         {
@@ -1022,17 +1074,8 @@ var Body = new Class({
             wasTouching.right = touching.right;
         }
 
-        touching.none = true;
-        touching.up = false;
-        touching.down = false;
-        touching.left = false;
-        touching.right = false;
-
-        blocked.none = true;
-        blocked.up = false;
-        blocked.down = false;
-        blocked.left = false;
-        blocked.right = false;
+        SetCollisionObject(true, touching);
+        SetCollisionObject(true, blocked);
 
         this.overlapR = 0;
         this.overlapX = 0;
@@ -1069,10 +1112,12 @@ var Body = new Class({
 
         if (this.moves)
         {
-            this.prev.x = this.position.x;
-            this.prev.y = this.position.y;
-            this.prevFrame.x = this.position.x;
-            this.prevFrame.y = this.position.y;
+            var pos = this.position;
+
+            this.prev.x = pos.x;
+            this.prev.y = pos.y;
+            this.prevFrame.x = pos.x;
+            this.prevFrame.y = pos.y;
         }
 
         if (willStep)
@@ -1234,6 +1279,8 @@ var Body = new Class({
     checkWorldBounds: function ()
     {
         var pos = this.position;
+        var vel = this.velocity;
+        var blocked = this.blocked;
         var bounds = this.customBoundsRectangle;
         var check = this.world.checkCollision;
 
@@ -1245,30 +1292,30 @@ var Body = new Class({
         if (pos.x < bounds.x && check.left)
         {
             pos.x = bounds.x;
-            this.velocity.x *= bx;
-            this.blocked.left = true;
+            vel.x *= bx;
+            blocked.left = true;
             wasSet = true;
         }
         else if (this.right > bounds.right && check.right)
         {
             pos.x = bounds.right - this.width;
-            this.velocity.x *= bx;
-            this.blocked.right = true;
+            vel.x *= bx;
+            blocked.right = true;
             wasSet = true;
         }
 
         if (pos.y < bounds.y && check.up)
         {
             pos.y = bounds.y;
-            this.velocity.y *= by;
-            this.blocked.up = true;
+            vel.y *= by;
+            blocked.up = true;
             wasSet = true;
         }
         else if (this.bottom > bounds.bottom && check.down)
         {
             pos.y = bounds.bottom - this.height;
-            this.velocity.y *= by;
-            this.blocked.down = true;
+            vel.y *= by;
+            blocked.down = true;
             wasSet = true;
         }
 
@@ -1986,6 +2033,39 @@ var Body = new Class({
     },
 
     /**
+     * Sets the Slide Factor of this Body.
+     *
+     * The Slide Factor controls how much velocity is preserved when
+     * this Body is pushed by another Body.
+     *
+     * The default value is 1, which means that it will take on all
+     * velocity given in the push. You can adjust this value to control
+     * how much velocity is retained by this Body when the push ends.
+     *
+     * A value of 0, for example, will allow this Body to be pushed
+     * but then remain completely still after the push ends, such as
+     * you see in a game like Sokoban.
+     *
+     * Or you can set a mid-point, such as 0.25 which will allow it
+     * to keep 25% of the original velocity when the push ends. You
+     * can combine this with the `setDrag()` method to create deceleration.
+     *
+     * @method Phaser.Physics.Arcade.Body#setSlideFactor
+     * @since 3.61.0
+     *
+     * @param {number} x - The horizontal slide factor. A value between 0 and 1.
+     * @param {number} [y=x] - The vertical slide factor. A value between 0 and 1.
+     *
+     * @return {Phaser.Physics.Arcade.Body} This Body object.
+     */
+    setSlideFactor: function (x, y)
+    {
+        this.slideFactor.set(x, y);
+
+        return this;
+    },
+
+    /**
      * Sets the Body's bounce.
      *
      * @method Phaser.Physics.Arcade.Body#setBounce
@@ -2456,7 +2536,7 @@ var Body = new Class({
 
         if (vx !== null)
         {
-            this.velocity.x = vx;
+            this.velocity.x = vx * this.slideFactor.x;
         }
 
         var blocked = this.blocked;
@@ -2494,7 +2574,7 @@ var Body = new Class({
 
         if (vy !== null)
         {
-            this.velocity.y = vy;
+            this.velocity.y = vy * this.slideFactor.y;
         }
 
         var blocked = this.blocked;

@@ -1,3 +1,17 @@
+# New Features - Arcade Physics
+
+* Arcade Physics Bodies have a new property called `slideFactor`. This is a Vector2 that controls how much velocity is retained by a Body after it has been pushed by another Body. The default value is 1, which means it retains all of its velocity. If set to zero, it will retain none of it. This allows you to create a Body that can be pushed around without imparting any velocity to it.
+* `Body.setSlideFactor` is a new method that sets the Body's `slideFactor` property.
+* The Arcade Physics World has a new method `nextCategory` which will create a new collision category and return it. You can define up to 32 unique collision categories per world.
+* Arcade Physics Bodies have two new properties: `collisionCategory` and `collisionMask`. These allow you to set a specific collision category and list of categories the body will collide with. This allows for fine-grained control over which bodies collide with which others. The default is that all bodies collide with all others, just like before.
+* `setCollisionCategory` is a new method available on Arcade Physics Bodies that allows you to set the collision category of the body. It's also available on Arcade Sprites, Images, Tilemap Layers, Groups and Static Groups directly.
+* `setCollidesWith` is a new method available on Arcade Physics Bodies that allows you to set which collision categories the body should collide with. It's also available on Arcade Sprites, Images, Tilemap Layers, Groups and Static Groups directly.
+* `resetCollision` is a new method available on Arcade Physics Bodies that allows you to reset the collision category and mask to their defaults. It's also available on Arcade Sprites, Images, Tilemap Layers, Groups and Static Groups directly.
+
+The default is as before: all bodies collide with each other. However, by using the categories you now have much more fine-grained control over which objects collide together, or not. They are filtered out at the top-level, meaning you can have a Sprite set to not collide with a Physics Group and it will skip checking every single child in the Group, potentially saving a lot of processing time.
+
+The new collision categories are used automatically by either directly calling the `collide` or `overlap` methods, or by creating a Collider object. This allows you to use far less colliders than you may have needed previously and skip needing to filter the pairs in the collision handlers.
+
 # New Features
 
 * `Text.setRTL` is a new method that allows you to set a Text Game Object as being rendered from right-to-left, instead of the default left to right (thanks @rexrainbow)
@@ -11,6 +25,8 @@
 * The `GameObject.setTexture` method has 2 new optional parameters: `updateSize` and `updateOrigin`, which are both passed to the `setFrame` method and allows you to control if the size and origin of the Game Object should be updated when the texture is set (thanks @Trissolo)
 * Both the Animation Config and the Play Animation Config allow you to set a new boolean property `randomFrame`. This is `false` by default, but if set, it will pick a random frame from the animation when it _starts_ playback. This allows for much more variety in groups of sprites created at the same time, using the same animation. This is also reflected in the new `Animation.randomFrame` and `AnimationState.randomFrame` properties.
 * You can now use a `Phaser.Types.Animations.PlayAnimationConfig` object in the `anims` property of the `ParticleEmitter` configuration object. This gives you far more control over what happens to the animation when used by particles, including setting random start frames, repeat delays, yoyo, etc. Close #6478 (thanks @michalfialadev)
+* `TilemapLayer.setTintFill` is a new method that will apply a fill-based tint to the tiles in the given area, rather than an additive-based tint, which is what the `setTint` method uses.
+* `Tile.tintFill` is a new boolean property that controls if the tile tint is additive or fill based. This is used in the TilemapLayerWebGLRenderer function.
 
 # Updates
 
@@ -24,17 +40,20 @@
 * The `Graphics` Game Object will now set a default line and fill style to fully transparent and black. This prevents issues where a Graphics object would render with a color set in other Shape Game Objects if it had been drawn to and no style was previous set (thanks Whitesmith)
 * The WebGLRenderer will now validate that the `mipmapFilter` property in the Game Config is a valid mipmap before assigning it.
 * A small amount of unused code has been removed from the `Polygon.setTo` method (thanks @Trissolo)
-* The `WebGLRenderer.deleteFramebuffer` method has been updated so it now tests for the exitennce of a COLOR and DEPTH_STENCIL attachments, and if found, removes the bindings and deletes the stencil buffer. The code that previously deelted the `RENDERERBUFFER_BINDING` has also been removed to avoid side-effects.
+* The `WebGLRenderer.deleteFramebuffer` method has been updated so it now tests for the existence of a COLOR and DEPTH_STENCIL attachments, and if found, removes the bindings and deletes the stencil buffer. The code that previously deleted the `RENDERERBUFFER_BINDING` has also been removed to avoid side-effects.
 * If you make a `Mesh` Game Object interactive, it will now bind to the scope of the Mesh and uses the current `faces` in the hit area callback, rather than the faces as defined when the Mesh was made interactive. This will help keep the input in sync with a potentially changing Mesh structure (thanks @rexrainbow)
 * iOS and any browser identifying as `AppleWebKit` will now set the `Device.es2019` flag to `true`. This causes Phaser to use the native array Stable Sort. This fixes an issue where overlapping particles could flicker on iOS. Fix #6483 (thanks @mattkelliher @spayton)
 * The `Text.dirty` Game Object property has been removed. It wasn't used internally at all, so was just adding confusion and using space.
 * The Request Video Frame polyfill will now check first to see if the browser supports `HTMLVideoElement` before trying to inspect its prototype. This should help in non-browser environments.
 * `Plane.originX` and `originY` are two new read-only properties that return the origin of the Plane, which is always 0.5 (thanks @rexrainbow)
 * The `LoaderPlugin` will now call `removeAllListeners()` as part of its `shutdown` method, which will clear any event listeners bound to a Loader instance of the Scene, during the Scene shutdown. Fix #6633 (thanks @samme)
+* `SetCollisionObject` is a new function that Arcade Physics bodies use internally to create and reset their `ArcadeBodyCollision` data objects.
+* `DynamicTexture.setFromRenderTarget` is a new method that syncs the internal Frame and TextureSource GL textures with the Render Target GL textures.
+* When a framebuffer is deleted, it now sets its `renderTexture` property to `undefined` to ensure the reference is cleared.
 
 # Bug Fixes
 
-* The `PostFXPipeline` will now set `autoResize` to `true` on all of its `RenderTarget` instances. This fixes an issue where the `PostFXPipeline` would not resize the render targets when the game size changed, causing them to become out of sync with the game canvas. Fix #6503 #6527 (thanks @Waclaw-I @rexrainbow)
+* The `PostFXPipeline` will now set `autoResize` to `true` on all of its `RenderTarget` instances. This fixes an issue where the `PostFXPipeline` would not resize the render targets when the game size changed, causing them to become out of sync with the game canvas. Fix #6503 (thanks @Waclaw-I)
 * `Particle.scaleY` would always be set to the `scaleX` value, even if given a different one within the config. It will now use its own value correctly.
 * `Array.Matrix.RotateLeft` was missing the `total` parameter, which controls how many times to rotate the matrix.
 * `Array.Matrix.RotateRight` was missing the `total` parameter, which controls how many times to rotate the matrix.
@@ -68,6 +87,9 @@
 * `StaticBody.setSize` will now check to see if the body has a Game Object or not, and only call `getCenter` and the frame sizes if it has. This fixes a bug where calling `physics.add.staticBody` would throw an error if you provided a width and height. Fix #6630 (thanks @Legend-Master)
 * The `DynamicTexture.fill` method will now correctly draw the fill rectangle if the `width` and `height` are provided in WebGL, where-as before it would assume the y axis started from the bottom-left instead of top-left. Fix #6615 (thanks @rexrainbow)
 * Calling the `Line.setLineWidth` method on the Line Shape Game Object would result in a line with double the thickness it should have had in WebGL. In Canvas it was the correct width. Both renderers now match. Fix #6604 (thanks @AlvaroNeuronup)
+* The `DynamicTexture` was leaking memory by leaving a WebGLTexture in memory when its `setSize` method was called. This happens automatically on instantiation, meaning that if you created DynamicTextures and then destroyed them frequently, memory would continue to increase (thanks David)
+* `DynamicTexture.width` and `height` were missing from the class definition, even though they were set and used internally. They're now exposed as read-only properties.
+* The `BitmapMask` wouldn't correctly set the gl viewport when binding, which caused the mask to distort in games where the canvas resizes from its default. Fix #6527 (thanks @rexrainbow)
 
 ## Examples, Documentation, Beta Testing and TypeScript
 

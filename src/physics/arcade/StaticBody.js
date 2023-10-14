@@ -6,8 +6,10 @@
 
 var CircleContains = require('../../geom/circle/Contains');
 var Class = require('../../utils/Class');
+var CollisionComponent = require('./components/Collision');
 var CONST = require('./const');
 var RectangleContains = require('../../geom/rectangle/Contains');
+var SetCollisionObject = require('./SetCollisionObject');
 var Vector2 = require('../../math/Vector2');
 
 /**
@@ -26,10 +28,16 @@ var Vector2 = require('../../math/Vector2');
  * @constructor
  * @since 3.0.0
  *
+ * @extends Phaser.Physics.Arcade.Components.Collision
+ *
  * @param {Phaser.Physics.Arcade.World} world - The Arcade Physics simulation this Static Body belongs to.
  * @param {Phaser.GameObjects.GameObject} [gameObject] - The Game Object this Body belongs to. As of Phaser 3.60 this is now optional.
  */
 var StaticBody = new Class({
+
+    Mixins: [
+        CollisionComponent
+    ],
 
     initialize:
 
@@ -405,7 +413,7 @@ var StaticBody = new Class({
          * @type {Phaser.Types.Physics.Arcade.ArcadeBodyCollision}
          * @since 3.0.0
          */
-        this.checkCollision = { none: false, up: true, down: true, left: true, right: true };
+        this.checkCollision = SetCollisionObject(false);
 
         /**
          * This property is kept for compatibility with Dynamic Bodies.
@@ -415,7 +423,7 @@ var StaticBody = new Class({
          * @type {Phaser.Types.Physics.Arcade.ArcadeBodyCollision}
          * @since 3.0.0
          */
-        this.touching = { none: true, up: false, down: false, left: false, right: false };
+        this.touching = SetCollisionObject(true);
 
         /**
          * This property is kept for compatibility with Dynamic Bodies.
@@ -426,7 +434,7 @@ var StaticBody = new Class({
          * @type {Phaser.Types.Physics.Arcade.ArcadeBodyCollision}
          * @since 3.0.0
          */
-        this.wasTouching = { none: true, up: false, down: false, left: false, right: false };
+        this.wasTouching = SetCollisionObject(true);
 
         /**
          * This property is kept for compatibility with Dynamic Bodies.
@@ -436,7 +444,7 @@ var StaticBody = new Class({
          * @type {Phaser.Types.Physics.Arcade.ArcadeBodyCollision}
          * @since 3.0.0
          */
-        this.blocked = { none: true, up: false, down: false, left: false, right: false };
+        this.blocked = SetCollisionObject(true);
 
         /**
          * The StaticBody's physics type (static by default).
@@ -447,6 +455,30 @@ var StaticBody = new Class({
          * @since 3.0.0
          */
         this.physicsType = CONST.STATIC_BODY;
+
+        /**
+         * The Arcade Physics Body Collision Category.
+         *
+         * This can be set to any valid collision bitfield value.
+         *
+         * See the `setCollisionCategory` method for more details.
+         *
+         * @name Phaser.Physics.Arcade.StaticBody#collisionCategory
+         * @type {number}
+         * @since 3.61.0
+         */
+        this.collisionCategory = 0x0001;
+
+        /**
+         * The Arcade Physics Body Collision Mask.
+         *
+         * See the `setCollidesWith` method for more details.
+         *
+         * @name Phaser.Physics.Arcade.StaticBody#collisionMask
+         * @type {number}
+         * @since 3.61.0
+         */
+        this.collisionMask = 1;
 
         /**
          * The calculated change in the Static Body's horizontal position during the current step.
