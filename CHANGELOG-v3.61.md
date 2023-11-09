@@ -1,3 +1,15 @@
+# New Features - Round Pixels
+
+All pixel rounding math is now handled on the GPU instead of on the CPU. This feature has now been enabled by default.
+
+* The Game Config `roundPixels` property is now `true` by default. This means that all Game Objects will be positioned and rendered with pixel-perfect precision, which is by far the most common use-case for Phaser games. This will prevent sub-pixelation when rendering at non-integer offsets and allows for smoother camera scrolling, especially at higher zoom scales. If you wish to disable this, you can do so by setting the `roundPixels` property in the Game Config to `false`. Note that only `roundPixels` has been set to `true`. The `pixelArt` property remains `false`. So if you're creating a pixel-art style game, please still enable this in your config.
+* All of the core vertex shaders, including Multi, Single and Mobile now have a new uniform called `uRoundPixels` which is set in all of the corresponding pipelines. This means that all pixel rounding calculations are now done on the GPU instead of the CPU, which can save a lot of math in intensive games.
+* `CanvasRenderer.batchSprite` has been updated to correctly use the Camera `roundPixels` property and apply it to the `drawImage` call.
+* `Camera.preRender` will no longer round the origin, follow coordinates or scrollX/Y coordinates. It will still round the World view.
+* The `MultiPipeline.batchSprite` method (which is also used by the Single Pipeline and Mobile Pipeline) will no longer use `roundPixels` when calculating the quad vertex data. It also won't apply it to any of the sprite values. This is all now handled in the shader directly.
+* `TransformMatrix.setQuad` no longer uses an anonymous function for `roundPixels`, which will help with performance.
+* The `TransformMatrix.setQuad` method signature has changed slightly. The `roundPixels` parameter is now optional and defaults to `false`. Previously, you always had to set it.
+
 # New Features - Arcade Physics
 
 * Arcade Physics Bodies have a new method called `setDirectControl` which toggles a new boolean property `directControl`. When enabled (it's false by default) it means the Body will calculate its velocity based on its change in position compared to the previous frame. This allows you to directly move a Body around the physics world by just changing its position, without having to use acceleration or velocity. This is useful if you want to move it via a Tween, or follow a Pointer, or a Path. Because its velocity is calculated based on this movement it will still resolve collisions with other bodies, imparting velocity to them as usual.
@@ -13,14 +25,29 @@ The default is as before: all bodies collide with each other. However, by using 
 
 The new collision categories are used automatically by either directly calling the `collide` or `overlap` methods, or by creating a Collider object. This allows you to use far less colliders than you may have needed previously and skip needing to filter the pairs in the collision handlers.
 
+# New Features - FX Updates and Fixes
+
+You can now set in your game config two new boolean properties that control if the built-in FX are enabled, or not. If you don't need to use the FX then disabling these will help save on texture memory and will compile less shaders, which can help with startup time. These are single-set flags, you cannot toggle them after the game has booted.
+
+* `disablePreFX` set this to `true` in your game config to disable the creation and use of Pre FX on all Game Objects.
+* `disablePostFX` set this to `true` in your game config to disable the creation and use of Post FX on all Game Objects.
+* The `PipelineManager` will now delay the creation of the FX Pipelines until its `boot` method, using these config values to determine if it should proceed.
+* The `PipelineManager.renderTargets` array will no longer be pre-populated if you disable Pre FX, saving on texture memory.
+* `FX.Circle.backgroundAlpha` is a new property that allows you to set the amount of the alpha of the background color in the Circle FX (thanks @rexrainbow)
+* `PostFXPipeline.bootFX` is a new method, which is the previous `boot` method but renamed. This is no longer called from the constructor, but instead when the Post FX Pipeline is activated by the Pipeline Manager. This means that the resources the Post FX requires, such as creating Render Targets and shaders, is delayed until the FX is actually used, saving on memory.
+* The `PostFXPipeline` will now set `autoResize` to `true` on all of its `RenderTarget` instances. This fixes an issue where the `PostFXPipeline` would not resize the render targets when the game size changed, causing them to become out of sync with the game canvas. Fix #6503 (thanks @Waclaw-I)
+* `FX.Blur` didn't set the `quality` parameter to its property, meaning it wasn't applied in the shader, causing it to always use a Low Blur quality (unless modified post-creation).
+* The `BlurFXPipeline` didn't bind the quality of shader specified in the controller, meaning it always used the Low Blur shader, regardless of what the FX controller asked for.
+* The `FXBlurLow` fragment shader didn't have the `offset` uniform. This is now passed in and applied to the resulting blur, preventing it from creating 45 degree artifacts (thanks Wayfinder)
+* Fixed an issue in the way the Tilemap WebGL Renderer would call `batchTexture` that meant if you applied a PostFX to a Tilemap Layer it would apply the fx for every single tile in the layer, instead of just once per layer. In a simple map this fix has reduced draw calls from over 12,000 to just 52, and it no longer matters how many tiles are on the layer, the cost of applying the FX is consistent regardless.
+
 # New Features
 
 * `Text.setRTL` is a new method that allows you to set a Text Game Object as being rendered from right-to-left, instead of the default left to right (thanks @rexrainbow)
-* `FX.Circle.backgroundAlpha` is a new property that allows you to set the amount of the alpha of the background color in the Circle FX (thanks @rexrainbow)
 * `Physics.Arcade.World.singleStep` is a new method that will advance the Arcade Physics World simulation by exactly 1 step (thanks @monteiz)
 * `Tilemaps.ObjectLayer.id` is a new property that returns the ID of the Object Layer, if specified within Tiled, or zero otherwise. You can now access the unique layer ID of Tiled layers if the event a map doesn't have unique layer names (thanks @rui-han-crh)
 * `Tilemaps.LayerData.id` is a new property that returns the ID of the Data Layer, if specified within Tiled, or zero otherwise (thanks @rui-han-crh)
-* `Text.setLetterSpacing` is a new method and `Text.lineSpacing` is the related property that allows you to set the spacing between each character of a Text Game Object. The value can be either negative or positive, causing the characters to get closer or further apart. Please understand that enabling this feature will cause Phaser to render each character in this Text object one by one, rather than use a draw for the whole string. This makes it extremely expensive when used with either long strings, or lots of strings in total. You will be better off creating bitmap font text if you need to display large quantities of characters with fine control over the letter spacing (thanks @Ariorh1337)
+* `Text.setLetterSpacing` is a new method and `Text.letterSpacing` is the related property that allows you to set the spacing between each character of a Text Game Object. The value can be either negative or positive, causing the characters to get closer or further apart. Please understand that enabling this feature will cause Phaser to render each character in this Text object one by one, rather than use a draw for the whole string. This makes it extremely expensive when used with either long strings, or lots of strings in total. You will be better off creating bitmap font text if you need to display large quantities of characters with fine control over the letter spacing (thanks @Ariorh1337)
 * `ParticleEmitter.clearDeathZones` is a new method that will clear all previously created Death Zones from a Particle Emitter (thanks @rexrainbow)
 * `ParticleEmitter.clearEmitZones` is a new method that will clear all previously created Emission Zones from a Particle Emitter (thanks @rexrainbow)
 * The `GameObject.setTexture` method has 2 new optional parameters: `updateSize` and `updateOrigin`, which are both passed to the `setFrame` method and allows you to control if the size and origin of the Game Object should be updated when the texture is set (thanks @Trissolo)
@@ -28,6 +55,10 @@ The new collision categories are used automatically by either directly calling t
 * You can now use a `Phaser.Types.Animations.PlayAnimationConfig` object in the `anims` property of the `ParticleEmitter` configuration object. This gives you far more control over what happens to the animation when used by particles, including setting random start frames, repeat delays, yoyo, etc. Close #6478 (thanks @michalfialadev)
 * `TilemapLayer.setTintFill` is a new method that will apply a fill-based tint to the tiles in the given area, rather than an additive-based tint, which is what the `setTint` method uses.
 * `Tile.tintFill` is a new boolean property that controls if the tile tint is additive or fill based. This is used in the TilemapLayerWebGLRenderer function.
+* `RenderTarget.willResize` is a new method that will return `true` if the Render Target will be resized as a result of the new given width and height values.
+* `Structs.Map.setAll` is a new method that allows you to pass an array of elements to be set into the Map. This is a chainable method.
+* When creating a `TimelineEvent` you can now set a new optional callback: `if`. If set, this callback is invoked at the start of the TimelineEvent. If it returns `true`, then the rest of the event is processed (i.e. tweens started, sound played, etc) otherwise the event is skipped. This allows you to create conditional events within a Timeline.
+* `Geom.Line.setFromObjects` is a new method that will set the Line start and end points to match those of the two given objects, which can be Game Objects, or anything Vector2-like (thanks @Trissolo)
 
 # Updates
 
@@ -51,17 +82,28 @@ The new collision categories are used automatically by either directly calling t
 * `SetCollisionObject` is a new function that Arcade Physics bodies use internally to create and reset their `ArcadeBodyCollision` data objects.
 * `DynamicTexture.setFromRenderTarget` is a new method that syncs the internal Frame and TextureSource GL textures with the Render Target GL textures.
 * When a framebuffer is deleted, it now sets its `renderTexture` property to `undefined` to ensure the reference is cleared.
+* `TransformMatrix.setToContext` will now use `setTransform(this)` as 'this' is an equivalent object that this method can natively take.
+* Optimized `WebGLRenderer.setTextureFilter` so it no longer uses a temporary array for the filter mode.
+* The `MultiPipeline.batchTexture` method has a new optional boolean parameter `skipPrePost` that will force the call to ignore calling the `preBatch` and `postBatch` Pipeline Manager methods for the Game Object. This allows you to skip the overhead of calling them if you know you don't need them.
+* The `tint` property can now act as a getter and a setter, where-as previously it was only a setter. Reading this property returns the equivalent of the `tintTopLeft` value (thanks @rexrainbow)
+* `ParticleEmitter.addDeathZone` now returns an _array_ of the Death Zone instances created, rather than just a single zone. This makes it functionally the same as `addEmitZone` (thanks @AlvaroEstradaDev)
+* The `GameObjects.Layer.add` method is now chainable (thanks @rexrainbow)
+* The `GameObjects.Layer.remove` and `removeAll` methods are now chainable and have a new optional boolean parameter `destroyChild`, which will destroy the Game Objects removed from the Layer (thanks @rexrainbow)
+* If a Game Object is destroyed, it will now automatically be removed from the Layer it was in, if any (thanks @rexrainbow)
+* `Curves.Path.defaultDivisions` is a new property that holds the default number of divisions to split the Path in to (thanks @AlvaroEstradaDev)
+* The `Curves.Path.getPoints` method has a new optional parameter `stepRate` which allows you to set the distance between points on the curve, and defaults to `defaultDivisions` (thanks @AlvaroEstradaDev)
+* The `Timeline` class will now emit the new `Phaser.Time.Events#COMPLETE` event when it completes. It will also no longer process its `update` method once the Timeline has completed (thanks @rexrainbow)
+* The `BaseSound.destroy` method will now call `BaseSound.stop` which will reset the `isPlaying` and other flags. Fix #6645 (thanks @rexrainbow)
+* The `RandomDataGenerator#weightedPick` method will no longer under-sample the first and last elements in the given array, leading to better distribution of results. Fix #6562 (thanks @wayfinder @shy @samme)
+* During `Game.runDestroy` it will now check for `this.domContainer.parentNode` before trying to remove it, preventing errors if the DOM Container has already been removed. Fix #6559 (thanks @orcomarcio)
+* The Game instance will now boot the new `SYSTEM_READY` event, which indicates that the internal Scene System has been created by the Scene Manager and is ready for use. The Texture Manager now listens for this event in order to create the `stamp` Image. This fixes an issue where the stamp would throw a run-time error if the game didn't feature a `preload` function. Fix #6616 (thanks @rexrainbow)
 
 # Bug Fixes
 
-* The `PostFXPipeline` will now set `autoResize` to `true` on all of its `RenderTarget` instances. This fixes an issue where the `PostFXPipeline` would not resize the render targets when the game size changed, causing them to become out of sync with the game canvas. Fix #6503 (thanks @Waclaw-I)
 * `Particle.scaleY` would always be set to the `scaleX` value, even if given a different one within the config. It will now use its own value correctly.
 * `Array.Matrix.RotateLeft` was missing the `total` parameter, which controls how many times to rotate the matrix.
 * `Array.Matrix.RotateRight` was missing the `total` parameter, which controls how many times to rotate the matrix.
 * `Array.Matrix.TranslateMatrix` didn't work with any translation values above 1 due to missing parameters in `RotateLeft` and `RotateRight`
-* `FX.Blur` didn't set the `quality` parameter to its property, meaning it wasn't applied in the shader, causing it to always use a Low Blur quality (unless modified post-creation).
-* The `BlurFXPipeline` didn't bind the quality of shader specified in the controller, meaning it always used the Low Blur shader, regardless of what the FX controller asked for.
-* The `FXBlurLow` fragment shader didn't have the `offset` uniform. This is now passed in and applied to the resulting blur, preventing it from creating 45 degree artifacts (thanks Wayfinder)
 * The `Tilemap.createFromObjects` method wouldn't always copy custom properties to the target objects or Data Manager. Fix #6391 (thanks @samme @paxperscientiam)
 * The `scale.min` and `scale.max` `width` and `height` properties in Game Config were ignored by the Game constructor, which was expecting `minWidth` and `minHeight`. This now matches the documentation. Fix #6501 (thanks @NikitaShpanko @wpederzoli)
 * Due to a copy-paste bug, the `Actions.GetLast` function had the same code as the `GetFirst` function. It now does what you'd expect it to do. Fix #6513 (thanks @dmokel)
@@ -91,6 +133,10 @@ The new collision categories are used automatically by either directly calling t
 * The `DynamicTexture` was leaking memory by leaving a WebGLTexture in memory when its `setSize` method was called. This happens automatically on instantiation, meaning that if you created DynamicTextures and then destroyed them frequently, memory would continue to increase (thanks David)
 * `DynamicTexture.width` and `height` were missing from the class definition, even though they were set and used internally. They're now exposed as read-only properties.
 * The `BitmapMask` wouldn't correctly set the gl viewport when binding, which caused the mask to distort in games where the canvas resizes from its default. Fix #6527 (thanks @rexrainbow)
+* The `Geom.Intersects.GetLineToPoints` function has been fixed to correct an oversight where the for loop prevented an intersection test between the given line and the line segment between the first and last point. Fix #6467 (thanks @Trissolo @Abspirit)
+* The `MultiAtlas` File Loader didn't prepend the `Loader.prefix` if set. This now forms part of the key, leading to the correct keys used for the Texture Manager. Fix #6614 (thanks @machineman1357)
+* There was an issue when loading Normal Maps with Sprite Sheets. Often, if the normal map image completed loading before the sprite sheet, it would cause it to be incorrectly added to the Texture Manager, resulting in broken frames. Now, regardless of the load order, the sprite sheet is added with its normal map correctly together. Fix #6491 (thanks @dreasgrech @PaulB-H @samme)
+* The `TextureSource.setFilter` method will now check to see if `renderer` is defined before accessing its `gl` property. This avoids Phaser crashing if you're in headless mode and set anti-aliasing to false in the game config. Fix #6663 (thanks @moufmouf)
 
 ## Examples, Documentation, Beta Testing and TypeScript
 
@@ -100,3 +146,6 @@ My thanks to the following for helping with the Phaser 3 Examples, Beta Testing,
 @AlvaroEstradaDev
 @julescubtree
 @emadkhezri
+@neki-dev
+@johnhyde
+@paxperscientiam

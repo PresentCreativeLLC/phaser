@@ -331,6 +331,16 @@ var Config = new Class({
          */
         this.fps = GetValue(config, 'fps', null);
 
+        /**
+         * @const {boolean} Phaser.Core.Config#disablePreFX - Disables the automatic creation of the Pre FX Pipelines. If disabled, you cannot use the built-in Pre FX on Game Objects.
+         */
+        this.disablePreFX = GetValue(config, 'disablePreFX', false);
+
+        /**
+         * @const {boolean} Phaser.Core.Config#disablePostFX - Disables the automatic creation of the Post FX Pipelines. If disabled, you cannot use the built-in Post FX on Game Objects.
+         */
+        this.disablePostFX = GetValue(config, 'disablePostFX', false);
+
         //  Render Settings - Anything set in here over-rides anything set in the core game config
 
         var renderConfig = GetValue(config, 'render', null);
@@ -373,7 +383,7 @@ var Config = new Class({
         /**
          * @const {boolean} Phaser.Core.Config#roundPixels - Draw texture-based Game Objects at only whole-integer positions. Game Objects without textures, like Graphics, ignore this property.
          */
-        this.roundPixels = GetValue(renderConfig, 'roundPixels', false, config);
+        this.roundPixels = GetValue(renderConfig, 'roundPixels', true, config);
 
         /**
          * @const {boolean} Phaser.Core.Config#pixelArt - Prevent pixel art from becoming blurred when scaled. It will remain crisp (tells the WebGL renderer to automatically create textures using a linear filter mode).
