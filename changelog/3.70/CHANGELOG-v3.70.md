@@ -1,3 +1,5 @@
+# Version 3.70.0 - Yotsuba - 10th November 2023
+
 # New Features - Round Pixels
 
 All pixel rounding math is now handled on the GPU instead of on the CPU. This feature has now been enabled by default.
@@ -9,6 +11,19 @@ All pixel rounding math is now handled on the GPU instead of on the CPU. This fe
 * The `MultiPipeline.batchSprite` method (which is also used by the Single Pipeline and Mobile Pipeline) will no longer use `roundPixels` when calculating the quad vertex data. It also won't apply it to any of the sprite values. This is all now handled in the shader directly.
 * `TransformMatrix.setQuad` no longer uses an anonymous function for `roundPixels`, which will help with performance.
 * The `TransformMatrix.setQuad` method signature has changed slightly. The `roundPixels` parameter is now optional and defaults to `false`. Previously, you always had to set it.
+
+# New Features - Texture Packer Nine Slice Support
+
+The new version of Texture Packer (v7.1.0) and above will now allow you to export scale9 sprite data in your Phaser 3 Atlas JSON. This allows you to create Nine Slice Sprites directly from the data, without having to specify the border sizes directly in your code. To use this feature, simply edit the sprite in Texture Packer, enable the 'scale9' checkbox and then drag the guides as required. When you export the atlas, the JSON will contain the new `scale9` object, which Phaser will parse and use when creating Nine Slice Game Objects.
+
+* You can now create a `NineSlice` Game Object without specifying a width or height for it. If you do this, it will use the size of the texture frame instead.
+* The `NineSlice` Game Object will now check to see if its associated Frame has any scale9 data set, and if so this is now used automatically to populate all of the border values.
+* The `NineSlice.setSlices` method has a new optional boolean parameter `skipScale9` which will allow you to set the border values of the Nine Slice directly, even if its Frame has associated scale9 data
+* `Frame.setScale9` is a new method that allows you to set the scale9 data associated with the given Frame. This is used internally by the Texture Packer parsers, but can also be called directly.
+* `Frame.scale9` is a new read-only boolean property that returns `true` if the Frame has scale9 data associated with it.
+* `Frame.is3Slice` is a new read-only boolean property that returns `true` if the Frame has scale9 data associated with it that is 3-slice instead of 9-slice.
+* The `JSONHash` texture parser will now check for `scale9` data in the JSON and if found, set it via the `Frame.setScale9` method.
+* The `JSONArray` texture parser will now check for `scale9` data in the JSON and if found, set it via the `Frame.setScale9` method.
 
 # New Features - Arcade Physics
 
@@ -137,15 +152,17 @@ You can now set in your game config two new boolean properties that control if t
 * The `MultiAtlas` File Loader didn't prepend the `Loader.prefix` if set. This now forms part of the key, leading to the correct keys used for the Texture Manager. Fix #6614 (thanks @machineman1357)
 * There was an issue when loading Normal Maps with Sprite Sheets. Often, if the normal map image completed loading before the sprite sheet, it would cause it to be incorrectly added to the Texture Manager, resulting in broken frames. Now, regardless of the load order, the sprite sheet is added with its normal map correctly together. Fix #6491 (thanks @dreasgrech @PaulB-H @samme)
 * The `TextureSource.setFilter` method will now check to see if `renderer` is defined before accessing its `gl` property. This avoids Phaser crashing if you're in headless mode and set anti-aliasing to false in the game config. Fix #6663 (thanks @moufmouf)
+* `SpineGameObject.setSkeletonFromJSON` has been fixed so it now passes the parameters in the correct order to the `setSkeleton` method. Fix #6585 (thanks @machineman1357)
 
 ## Examples, Documentation, Beta Testing and TypeScript
 
 My thanks to the following for helping with the Phaser 3 Examples, Beta Testing, Docs, and TypeScript definitions, either by reporting errors, fixing them, or helping author the docs:
 
-@samme
 @AlvaroEstradaDev
-@julescubtree
 @emadkhezri
-@neki-dev
+@gohack0322
 @johnhyde
+@julescubtree
+@neki-dev
 @paxperscientiam
+@samme
