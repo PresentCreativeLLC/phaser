@@ -423,7 +423,7 @@ var TweenManager = new Class({
      * @method Phaser.Tweens.TweenManager#chain
      * @since 3.60.0
      *
-     * @param {Phaser.Types.Tweens.TweenChainBuilderConfig|object} tweens - A Tween Chain configuration object.
+     * @param {Phaser.Types.Tweens.TweenChainBuilderConfig|Phaser.Tweens.TweenChain} [config] - A Tween Chain configuration object.
      *
      * @return {Phaser.Tweens.TweenChain} The Tween Chain instance.
      */

@@ -109,7 +109,7 @@ var TweenChain = new Class({
      * @method Phaser.Tweens.TweenChain#add
      * @since 3.60.0
      *
-     * @param {Phaser.Types.Tweens.TweenBuilderConfig[]|object[]} tweens - An array of Tween configuration objects for the Tweens in this chain.
+     * @param {Phaser.Types.Tweens.TweenBuilderConfig[]|Phaser.Tweens.Tween[]} tweens - An array of Tween configuration objects for the Tweens in this chain.
      *
      * @return {this} This TweenChain instance.
      */
