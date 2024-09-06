@@ -204,7 +204,7 @@ var Rope = new Class({
         /**
          * The horizontally flipped state of the Game Object.
          *
-         * A Game Object that is flipped horizontally will render inversed on the horizontal axis.
+         * A Game Object that is flipped horizontally will render inverted on the horizontal axis.
          * Flipping always takes place from the middle of the texture and does not impact the scale value.
          * If this Game Object has a physics body, it will not change the body. This is a rendering toggle only.
          *
@@ -219,7 +219,7 @@ var Rope = new Class({
         /**
          * The vertically flipped state of the Game Object.
          *
-         * A Game Object that is flipped vertically will render inversed on the vertical axis (i.e. upside down)
+         * A Game Object that is flipped vertically will render inverted on the vertical axis (i.e. upside down)
          * Flipping always takes place from the middle of the texture and does not impact the scale value.
          * If this Game Object has a physics body, it will not change the body. This is a rendering toggle only.
          *
@@ -365,7 +365,7 @@ var Rope = new Class({
      * Sets the alignment of the points in this Rope to be horizontal, in a strip format.
      *
      * Calling this method will reset this Rope. The current points, vertices, colors and alpha
-     * values will be reset to thoes values given as parameters.
+     * values will be reset to those values given as parameters.
      *
      * @method Phaser.GameObjects.Rope#setHorizontal
      * @since 3.23.0
@@ -394,7 +394,7 @@ var Rope = new Class({
      * Sets the alignment of the points in this Rope to be vertical, in a column format.
      *
      * Calling this method will reset this Rope. The current points, vertices, colors and alpha
-     * values will be reset to thoes values given as parameters.
+     * values will be reset to those values given as parameters.
      *
      * @method Phaser.GameObjects.Rope#setVertical
      * @since 3.23.0
@@ -1067,7 +1067,7 @@ var Rope = new Class({
     /**
      * The horizontally flipped state of the Game Object.
      *
-     * A Game Object that is flipped horizontally will render inversed on the horizontal axis.
+     * A Game Object that is flipped horizontally will render inverted on the horizontal axis.
      * Flipping always takes place from the middle of the texture and does not impact the scale value.
      * If this Game Object has a physics body, it will not change the body. This is a rendering toggle only.
      *
@@ -1095,7 +1095,7 @@ var Rope = new Class({
     /**
      * The vertically flipped state of the Game Object.
      *
-     * A Game Object that is flipped vertically will render inversed on the vertical axis (i.e. upside down)
+     * A Game Object that is flipped vertically will render inverted on the vertical axis (i.e. upside down)
      * Flipping always takes place from the middle of the texture and does not impact the scale value.
      * If this Game Object has a physics body, it will not change the body. This is a rendering toggle only.
      *
